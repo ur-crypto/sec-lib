@@ -1,0 +1,59 @@
+name: sec-lib
+version: 0.0.0
+cabal-version: >=1.10
+build-type: Simple
+license: MIT
+license-file: LICENSE.md
+maintainer: Jacob Bisnett
+synopsis: TODO
+description:
+    <https://github.com/JBisnett/sec-lib#readme>
+category: TODO
+extra-source-files:
+    README.md
+    stack.yaml
+
+source-repository head
+    type: git
+    location: https://github.com/JBisnett/sec-lib
+
+library
+    exposed-modules:
+        Crypto
+    build-depends:
+        base ==4.8.*
+    default-language: Haskell2010
+    hs-source-dirs: library
+    ghc-options: -Wall
+
+executable sec-lib
+    main-is: Executable.hs
+    build-depends:
+        base -any,
+        sec-lib -any
+    default-language: Haskell2010
+    hs-source-dirs: executable
+    ghc-options: -threaded -Wall
+
+test-suite sec-lib-test-suite
+    type: exitcode-stdio-1.0
+    main-is: TestSuite.hs
+    build-depends:
+        base -any,
+        sec-lib -any,
+        tasty ==0.11.0.2,
+        tasty-hspec ==1.1.2
+    default-language: Haskell2010
+    hs-source-dirs: test-suite
+    ghc-options: -threaded -Wall -Werror
+
+benchmark sec-lib-benchmark
+    type: exitcode-stdio-1.0
+    main-is: Benchmark.hs
+    build-depends:
+        base -any,
+        sec-lib -any,
+        criterion ==1.1.0.0
+    default-language: Haskell2010
+    hs-source-dirs: benchmark
+    ghc-options: -threaded -Wall
