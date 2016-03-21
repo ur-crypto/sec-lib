@@ -1,5 +1,0 @@
--- | An example module.
-module Crypto where
-
-plus a b = 2
--- | An example function.
