@@ -2,5 +2,7 @@ flags: {}
 extra-package-dbs: []
 packages:
 - '.'
-extra-deps: []
+extra-deps:
+- Crypto-4.2.5.1
+- text-1.2.2.0
 resolver: lts-4.2
