@@ -35,6 +35,21 @@ printSendTT (TruthTable r1 r2 r3 r4) =  do
     -- network send
     putStrLn "Encrypted Keys"
     putStrLn $ unlines $ map (X.encode . unpackBytes) outkeys
+    putStrLn "Testing Dec"
+    testDec r1 r2 r3 r4 outkeys
+    where 
+    testDec (a0, b0, _) (a1, b1, _) (a2, b2, _) (a3, b3, _) outkeys = do
+        putStrLn "Should Be Correct"
+        printInfo [(a0, b0, outkeys !! 0), (a1, b1, outkeys !! 1), (a2, b2, outkeys !! 2), (a3, b3, outkeys !! 3)]
+        putStrLn "Should Be Incorrect"
+        printInfo [(a0, b0, outkeys !! 1), (a1, b1, outkeys !! 2), (a2, b2, outkeys !! 3), (a3, b3, outkeys !! 0)]
+        where
+        printInfo x = putStrLn $ unlines (map (process . decOutKey) x)
+        process (Just a) = X.encode . unpackBytes $ a
+        process Nothing = ""
+            
+        
+
 
 getKeys :: IO(Key, Key) -> IO(Key, Key) -> IO(Key, Key, Key, Key, Key, Key)
 getKeys kp1 kp2 = do

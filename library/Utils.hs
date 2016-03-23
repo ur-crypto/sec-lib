@@ -1,8 +1,6 @@
 module Utils where
 import OpenSSL.Random
 import Data.Word
-import Data.Monoid
-import Data.Maybe
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString.Builder as D
@@ -10,13 +8,28 @@ import Crypto.Cipher.AES
 import Crypto.Cipher.Types
 import Crypto.Error
 
+
+-- In Bytes
+
+cipherSize :: Int
+cipherSize = 16
+
+keyLength :: Int
+keyLength = 10
+
+padLength :: Int
+padLength = cipherSize - keyLength
+
+zeros :: BS.ByteString
+zeros = BS.pack $ map (\_ -> 0 :: Word8) [1 .. padLength]
+
 zeroBuilder :: D.Builder
-zeroBuilder = mappend (D.word32LE 0) (D.word16LE 0)
+zeroBuilder = D.byteString zeros
 
 genKeyPair :: IO (BS.ByteString, BS.ByteString)
 genKeyPair = do
-    k1 <- randBytes 10
-    k2 <- randBytes 10
+    k1 <- randBytes keyLength
+    k2 <- randBytes keyLength
     let k1Builder = mappend (D.byteString k1) zeroBuilder
     let k2Builder = mappend (D.byteString k2) zeroBuilder
 
@@ -34,8 +47,7 @@ decOutKey :: (BS.ByteString, BS.ByteString, BS.ByteString) -> Maybe BS.ByteStrin
 decOutKey (a, b, o) = 
     let (ac, bc) = getAESKeys a b in 
     let check = ecbDecrypt bc $ ecbDecrypt ac o in
-    let zeros = L.toStrict . D.toLazyByteString $ zeroBuilder in
-    let (val, z) = BS.splitAt 80 check in
+    let (_, z) = BS.splitAt keyLength check in
     if z == zeros
         then Just check
         else Nothing
