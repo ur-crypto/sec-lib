@@ -7,6 +7,7 @@ import qualified Data.ByteString.Builder as D
 import Crypto.Cipher.AES
 import Crypto.Cipher.Types
 import Crypto.Error
+import Types
 
 
 -- In Bytes
@@ -26,14 +27,14 @@ zeros = BS.pack $ map (\_ -> 0 :: Word8) [1 .. padLength]
 zeroBuilder :: D.Builder
 zeroBuilder = D.byteString zeros
 
-genKeyPair :: IO (BS.ByteString, BS.ByteString)
+genKeyPair :: IO (Value (BS.ByteString, BS.ByteString))
 genKeyPair = do
     k1 <- randBytes keyLength
     k2 <- randBytes keyLength
     let k1Builder = mappend (D.byteString k1) zeroBuilder
     let k2Builder = mappend (D.byteString k2) zeroBuilder
 
-    return (L.toStrict . D.toLazyByteString $ k1Builder, L.toStrict . D.toLazyByteString $ k2Builder)
+    return $ Input (L.toStrict . D.toLazyByteString $ k1Builder, L.toStrict . D.toLazyByteString $ k2Builder)
     
 getAESKeys :: BS.ByteString -> BS.ByteString -> (AES128, AES128)
 getAESKeys a b = (throwCryptoError $ cipherInit a :: AES128, throwCryptoError $ cipherInit b :: AES128)

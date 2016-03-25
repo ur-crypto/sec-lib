@@ -1,16 +1,14 @@
 {-# LANGUAGE RebindableSyntax #-}
-{-# LANGUAGE FlexibleInstances #-}
-
 module Producer where
-import Prelude
+import Prelude hiding (ifThenElse)
 import qualified Data.ByteString as B
 import Data.ByteString.Internal (unpackBytes)
 import qualified Codec.Binary.BubbleBabble as X
 import Utils
-
+import Types
 
 type Key = B.ByteString
-data KeyPair = KeyPair{key1::Key, key2::Key}
+type KeyPair = Value (Key, Key)
 data TruthTable = TruthTable (Key, Key, Key) (Key, Key, Key) (Key, Key, Key) (Key, Key, Key)
 
 printTT :: TruthTable -> IO()
@@ -27,12 +25,6 @@ printTT (TruthTable row1 row2 row3 row4 )= do
         let s_list = map (X.encode . unpackBytes) [k1, k2, k3]
         putStrLn $ unlines s_list
         return ()
-
-unwrapKeys :: IO(Key, Key) -> IO(Key, Key) -> IO(Key, Key, Key, Key)
-unwrapKeys kp1 kp2 = do
-    (a0, a1) <- kp1
-    (b0, b1) <- kp2
-    return (a0, a1, b0, b1)
 
 printSendTT :: TruthTable -> IO()
 printSendTT (TruthTable r1 r2 r3 r4) =  do
@@ -52,53 +44,43 @@ printSendTT (TruthTable r1 r2 r3 r4) =  do
         printInfo x = putStrLn $ unlines (map (process . decOutKey) x)
         process (Just a) = X.encode . unpackBytes $ a
         process Nothing = ""
-            
-        
-
-
-getKeys :: IO(Key, Key) -> IO(Key, Key) -> IO(Key, Key, Key, Key, Key, Key)
-getKeys kp1 kp2 = do
-    (a0, a1, b0, b1) <- unwrapKeys kp1 kp2 
-    (o0, o1) <- genKeyPair
-    return (a0, a1, b0, b1, o0, o1)
 
 sendInfo :: TruthTable -> IO()
 sendInfo tt = do
     printTT tt
     printSendTT tt
 
-type Gate = IO (Key, Key) -> IO(Key, Key) -> IO (Key, Key) 
+processGate :: KeyPair -> IO KeyPair
+processGate (Gate t k1 k2) = do
+    a <- processGate k1
+    b <- processGate k2
+    o <- genKeyPair
+    let tt = getTT t o a b
+    sendInfo tt
+    return o
+    where
+    helper o1 o2 o3 o4 (Input (a0, a1)) (Input (b0, b1))=
+        TruthTable (a0, b0, o1) (a0, b1, o2) (a1, b0, o3) (a1, b1, o4)
+    getTT AND (Input (o0, o1)) = helper o0 o0 o0 o1
+    getTT OR (Input (o0, o1)) = helper o0 o1 o1 o1
+    getTT XOR (Input (o0, o1)) = helper o0 o1 o1 o0
+    getTT NAND (Input (o0, o1)) = helper o1 o1 o1 o0
 
--- define these as a type
-(.&.) :: Gate
-(.&.) kp1 kp2 = do
-    (a0, a1, b0, b1, o0, o1) <- getKeys kp1 kp2
-    sendInfo $ TruthTable (a0, b0, o0) (a1, b0, o0) (a0, b1, o0) (a1, b1, o1)
-    return (o0, o1)
+processGate (Input a) = return (Input a)
 
-(.|.) :: Gate
-(.|.) kp1 kp2 = do
-    (a0, a1, b0, b1, o0, o1) <- getKeys kp1 kp2
-    sendInfo $ TruthTable (a0, b0, o0) (a1, b0, o1) (a0, b1, o1) (a1, b1, o1)
-    return (o0, o1)
 
-nand :: Gate
-nand kp1 kp2 = do
-    (a0, a1, b0, b1, o0, o1) <- getKeys kp1 kp2
-    sendInfo $ TruthTable (a0, b0, o1) (a1, b0, o1) (a0, b1, o1) (a1, b1, o0)
-    return (o0, o1)
 
-xor :: Gate
-xor kp1 kp2 = do
-    (a0, a1, b0, b1, o0, o1) <- getKeys kp1 kp2
-    sendInfo $ TruthTable (a0, b0, o0) (a1, b0, o1) (a0, b1, o1) (a1, b1, o0)
-    return (o0, o1)
-    
+(.&.) :: KeyPair -> KeyPair -> KeyPair
+(.&.) = Gate AND
+(.|.) :: KeyPair -> KeyPair -> KeyPair
+(.|.) = Gate OR
+xor :: KeyPair -> KeyPair -> KeyPair
+xor = Gate XOR 
+nand :: KeyPair -> KeyPair -> KeyPair
+nand = Gate NAND
 
-ifThenElse :: IO (Key, Key) -> IO (Key, Key) -> IO (Key, Key) -> IO (Key, Key)
-ifThenElse bool tBranch fBranch = do
-    tEval <- tBranch
-    fEval <- fBranch
-    notBool <- nand bool bool
-    (return tEval .&. bool) .|. (return fEval .&. return notBool)
+ifThenElse :: KeyPair -> KeyPair -> KeyPair -> KeyPair
+ifThenElse bool tb fb = 
+    let nbool = Gate NAND bool bool in
+    ((bool .&. tb) .|. (nbool .&. fb))
 
