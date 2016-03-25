@@ -29,16 +29,28 @@ library
         bytestring,
         Crypto,
         binary,
-        cryptonite
+        cryptonite,
+        network
     default-language: Haskell2010
     hs-source-dirs: library
     ghc-options: -Wall
 
-executable sec-lib
-    main-is: Executable.hs
+executable sec-produce
+    main-is: ProduceMain.hs
     build-depends:
         base -any,
-        sec-lib -any
+        sec-lib -any,
+        network
+    default-language: Haskell2010
+    hs-source-dirs: executable
+    ghc-options: -threaded -Wall
+
+executable sec-consume
+    main-is: ConsumeMain.hs
+    build-depends:
+        base -any,
+        sec-lib -any,
+        network
     default-language: Haskell2010
     hs-source-dirs: executable
     ghc-options: -threaded -Wall

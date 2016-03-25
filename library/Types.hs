@@ -1,4 +1,9 @@
-module Types (Value(..), GateType(..))  where
+module Types (Value(..), GateType(..), Key)  where
+import Data.ByteString
+
+type Key = ByteString
+
+
 data GateType   = AND
                 | OR
                 | XOR
