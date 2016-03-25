@@ -1,4 +1,6 @@
+{-# LANGUAGE RebindableSyntax #-}
 module Producer where
+import Prelude hiding (ifThenElse)
 import qualified Data.ByteString as B
 import Data.ByteString.Internal (unpackBytes)
 import qualified Codec.Binary.BubbleBabble as X
@@ -76,4 +78,9 @@ xor :: KeyPair -> KeyPair -> KeyPair
 xor = Gate XOR 
 nand :: KeyPair -> KeyPair -> KeyPair
 nand = Gate NAND
+
+ifThenElse :: KeyPair -> KeyPair -> KeyPair -> KeyPair
+ifThenElse bool tb fb = 
+    let nbool = Gate NAND bool bool in
+    ((bool .&. tb) .|. (nbool .&. fb))
 
