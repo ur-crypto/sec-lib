@@ -1,10 +1,16 @@
-{-# LANGUAGE RebindableSyntax #-}
-import Prelude hiding (ifThenElse)
+import Prelude
 import Producer
 import Network.Socket
 import Network.Socket.ByteString as SBS
 import Utils
 import Types
+
+testList :: [Bool]
+testList = [True, False, True, True, False, True, True, False,
+            True, False, True, True, False, True, True, False]
+
+wordCmp :: [KeyPair] -> [KeyPair] -> KeyPair
+wordCmp n1 n2 = foldl1 (.|.) (zipWith (.&.) n1 n2)
 
 getSocket :: IO Socket
 getSocket = do
@@ -14,31 +20,34 @@ getSocket = do
     connect soc (addrAddress serveraddr)
     return soc
 
+sendList :: Socket -> [(Key, Key)] -> [Bool] -> IO()
+sendList _ [] [] = return () 
+sendList soc ((kp0, kp1):kps) (b:bs)= do
+    if b
+        then SBS.sendAll soc kp1
+        else SBS.sendAll soc kp0
+    sendList soc kps bs
+
+sendList _ _ _ = return $ error "Unbalanced send list"
+
 main :: IO ()
 main = do
-    (ka0, ka1) <- genKeyPair
-    (kb0, kb1) <- genKeyPair
-    (kc0, kc1) <- genKeyPair
-    let (a, b, c) = (Input (ka0, ka1), Input (kb0, kb1), Input (kc0, kc1))
+    keyList <- mapM (const genKeyPair) [1..32 :: Integer]
+    let (ourList, theirList) = splitAt 16 (map Input keyList)
     putStrLn "Start Keys"
-    let (t, f) = (Just True, Just False)
-
-    printKey f ka0 
-    printKey t ka1
-    printKey f kb0
-    printKey t kb1
-    printKey f kc0
-    printKey t kc1
-
-    soc <- getSocket
-    SBS.sendAll soc ka0
-    SBS.sendAll soc kb1
-    SBS.sendAll soc kc0
+    mapM_ printKeyPairs keyList
+    let boolList = testList ++ testList
     putStrLn ""
-    let eq =  if c then a else b
-    (Input (o1, o2)) <- processGate soc eq
+    soc <- getSocket 
+    sendList soc keyList boolList
+    (Input (o0, o1)) <- processGate soc $ wordCmp ourList theirList
+    printKey (Just False) o0
+    printKey (Just True) o1
 
-    putStrLn "Answers"
-    printKey f o1
-    printKey t o2
+    
     return ()
+    where
+    printKeyPairs (k0, k1) = do
+        let (t, f) = (Just True, Just False)
+        printKey f k0
+        printKey t k1

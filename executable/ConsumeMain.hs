@@ -1,10 +1,12 @@
-{-# LANGUAGE RebindableSyntax #-}
-import Prelude hiding (ifThenElse)
+import Prelude 
 import Consumer
 import Network.Socket
 import Network.Socket.ByteString as SBS
 import Utils
 import Types
+
+wordCmp :: [VKey] -> [VKey] -> VKey
+wordCmp n1 n2 = foldl1 (.|.) (zipWith  (.&.) n1 n2)
 
 getSocket :: IO Socket
 getSocket = do
@@ -16,21 +18,19 @@ getSocket = do
     (conn, _) <- accept sock
     return conn
 
+receiveList :: Socket -> Integer -> IO [Key]
+receiveList soc num = mapM (const $ SBS.recv soc cipherSize) [1..num]
+
 main :: IO ()
 main = do
     soc <- getSocket
-    ka <- SBS.recv soc cipherSize
-    kb <- SBS.recv soc cipherSize
-    kc <- SBS.recv soc cipherSize
+    keyList <- receiveList soc 32
+    let (theirList, ourList) = splitAt 16 $ map Input keyList
     putStrLn "Starting Keys (from OT)"
     let pk = printKey Nothing
-    pk ka
-    pk kb
-    pk kc
+    mapM_ pk keyList
 
-    let (a, b, c) = (Input ka, Input kb, Input kc)
-    let eq =  if c then a else b
-    (Input o) <- processGate  soc eq
+    (Input o) <- processGate soc $ wordCmp theirList ourList
     putStrLn ""
     putStrLn "Answer"
     pk o
