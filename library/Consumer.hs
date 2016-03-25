@@ -27,6 +27,7 @@ processTT (TruthTable a b c d) (Input k1) (Input k2) =
     corrKey (Just _) = True
     corrKey Nothing = False
     keyList =  [(k1, k2, a), (k1, k2, b), (k1, k2, c), (k1, k2, d)] 
+processTT _ _ _ = error "Passing gate to processTT"
 
 processGate :: BS.Socket -> VKey -> IO VKey
 processGate soc (Gate _ k1 k2) = do

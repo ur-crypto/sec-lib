@@ -55,6 +55,13 @@ decOutKey (a, b, o) =
         then Just check
         else Nothing
     
-printKey :: BS.ByteString -> IO()
-printKey key = putStrLn $ X.encode . unpackBytes $ key
-    
+
+keyString :: BS.ByteString -> String
+keyString key = X.encode . unpackBytes $ key
+
+printKey :: Maybe Bool -> BS.ByteString -> IO()
+printKey (Just False) key = putStrLn $ "0:\t" ++ keyString key
+printKey (Just True) key = putStrLn $ "1:\t" ++ keyString key
+printKey Nothing key = putStrLn $ "?:\t" ++ keyString key
+
+
