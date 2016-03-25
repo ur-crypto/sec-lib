@@ -8,6 +8,7 @@ data GateType   = AND
                 | OR
                 | XOR
                 | NAND
+                | BIJ
 
 data Value a    = Gate GateType (Value a) (Value a)
                 | Input a

@@ -47,6 +47,8 @@ xor :: VKey -> VKey -> VKey
 xor = Gate XOR 
 nand :: VKey -> VKey -> VKey
 nand = Gate NAND
+bij :: VKey -> VKey -> VKey
+bij = Gate BIJ
 
 --If Then Else Macro
 ifThenElse :: VKey -> VKey -> VKey -> VKey

@@ -10,7 +10,7 @@ testList = [True, False, True, True, False, True, True, False,
             True, False, True, True, False, True, True, False]
 
 wordCmp :: [KeyPair] -> [KeyPair] -> KeyPair
-wordCmp n1 n2 = foldl1 (.|.) (zipWith (.&.) n1 n2)
+wordCmp n1 n2 = foldl1 (.&.) (zipWith bij n1 n2)
 
 getSocket :: IO Socket
 getSocket = do
@@ -35,7 +35,6 @@ main = do
     keyList <- mapM (const genKeyPair) [1..32 :: Integer]
     let (ourList, theirList) = splitAt 16 (map Input keyList)
     putStrLn "Start Keys"
-    mapM_ printKeyPairs keyList
     let boolList = testList ++ testList
     putStrLn ""
     soc <- getSocket 
@@ -46,8 +45,3 @@ main = do
 
     
     return ()
-    where
-    printKeyPairs (k0, k1) = do
-        let (t, f) = (Just True, Just False)
-        printKey f k0
-        printKey t k1

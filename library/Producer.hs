@@ -29,6 +29,7 @@ processGate soc (Gate t k1 k2) = do
     getTT OR (Input (o0, o1)) = helper o0 o1 o1 o1
     getTT XOR (Input (o0, o1)) = helper o0 o1 o1 o0
     getTT NAND (Input (o0, o1)) = helper o1 o1 o1 o0
+    getTT BIJ (Input (o0, o1)) = helper o1 o0 o0 o1
     getTT _ _ = error "Should not pass gates to gates"
 
 processGate _ (Input a) = return (Input a)
@@ -43,6 +44,8 @@ xor :: KeyPair -> KeyPair -> KeyPair
 xor = Gate XOR 
 nand :: KeyPair -> KeyPair -> KeyPair
 nand = Gate NAND
+bij :: KeyPair -> KeyPair -> KeyPair
+bij = Gate BIJ
 
 --If Then Else Macro
 ifThenElse :: KeyPair -> KeyPair -> KeyPair -> KeyPair
