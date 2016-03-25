@@ -1,8 +1,13 @@
+{-# LANGUAGE RebindableSyntax #-}
+{-# LANGUAGE FlexibleInstances #-}
+
 module Producer where
+import Prelude
 import qualified Data.ByteString as B
 import Data.ByteString.Internal (unpackBytes)
 import qualified Codec.Binary.BubbleBabble as X
 import Utils
+
 
 type Key = B.ByteString
 data KeyPair = KeyPair{key1::Key, key2::Key}
@@ -62,15 +67,38 @@ sendInfo tt = do
     printTT tt
     printSendTT tt
 
+type Gate = IO (Key, Key) -> IO(Key, Key) -> IO (Key, Key) 
+
 -- define these as a type
-(.&.) :: IO (Key, Key) -> IO(Key, Key) -> IO (Key, Key)
+(.&.) :: Gate
 (.&.) kp1 kp2 = do
     (a0, a1, b0, b1, o0, o1) <- getKeys kp1 kp2
     sendInfo $ TruthTable (a0, b0, o0) (a1, b0, o0) (a0, b1, o0) (a1, b1, o1)
     return (o0, o1)
 
-(.|.) :: IO (Key, Key) -> IO(Key, Key) -> IO (Key, Key)
+(.|.) :: Gate
 (.|.) kp1 kp2 = do
     (a0, a1, b0, b1, o0, o1) <- getKeys kp1 kp2
     sendInfo $ TruthTable (a0, b0, o0) (a1, b0, o1) (a0, b1, o1) (a1, b1, o1)
     return (o0, o1)
+
+nand :: Gate
+nand kp1 kp2 = do
+    (a0, a1, b0, b1, o0, o1) <- getKeys kp1 kp2
+    sendInfo $ TruthTable (a0, b0, o1) (a1, b0, o1) (a0, b1, o1) (a1, b1, o0)
+    return (o0, o1)
+
+xor :: Gate
+xor kp1 kp2 = do
+    (a0, a1, b0, b1, o0, o1) <- getKeys kp1 kp2
+    sendInfo $ TruthTable (a0, b0, o0) (a1, b0, o1) (a0, b1, o1) (a1, b1, o0)
+    return (o0, o1)
+    
+
+ifThenElse :: IO (Key, Key) -> IO (Key, Key) -> IO (Key, Key) -> IO (Key, Key)
+ifThenElse bool tBranch fBranch = do
+    tEval <- tBranch
+    fEval <- fBranch
+    notBool <- nand bool bool
+    (return tEval .&. bool) .|. (return fEval .&. return notBool)
+
