@@ -23,14 +23,15 @@ main = do
     kb <- SBS.recv soc cipherSize
     kc <- SBS.recv soc cipherSize
     putStrLn "Starting Keys (from OT)"
-    printKey ka
-    printKey kb
-    printKey kc
+    let pk = printKey Nothing
+    pk ka
+    pk kb
+    pk kc
 
     let (a, b, c) = (Input ka, Input kb, Input kc)
     let eq =  if c then a else b
     (Input o) <- processGate  soc eq
     putStrLn ""
     putStrLn "Answer"
-    printKey o
+    pk o
     return ()

@@ -21,12 +21,14 @@ main = do
     (kc0, kc1) <- genKeyPair
     let (a, b, c) = (Input (ka0, ka1), Input (kb0, kb1), Input (kc0, kc1))
     putStrLn "Start Keys"
-    printKey ka0
-    printKey ka1
-    printKey kb0
-    printKey kb1
-    printKey kc0
-    printKey kc1
+    let (t, f) = (Just True, Just False)
+
+    printKey f ka0 
+    printKey t ka1
+    printKey f kb0
+    printKey t kb1
+    printKey f kc0
+    printKey t kc1
 
     soc <- getSocket
     SBS.sendAll soc ka0
@@ -37,6 +39,6 @@ main = do
     (Input (o1, o2)) <- processGate soc eq
 
     putStrLn "Answers"
-    printKey o1
-    printKey o2
+    printKey f o1
+    printKey t o2
     return ()
