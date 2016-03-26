@@ -5,7 +5,7 @@ import Network.Socket.ByteString as SBS
 import Utils
 import Types
 
-wordCmp :: [VKey] -> [VKey] -> VKey
+wordCmp :: [CKey] -> [CKey] -> CKey
 wordCmp n1 n2 = foldl1 (.&.) (zipWith  bij n1 n2)
 
 getSocket :: IO Socket
@@ -26,10 +26,7 @@ main = do
     soc <- getSocket
     keyList <- receiveList soc 32
     let (theirList, ourList) = splitAt 16 $ map Input keyList
-    putStrLn "Starting Keys (from OT)"
-    
     (Input o) <- processGate soc $ wordCmp theirList ourList
-    putStrLn ""
     putStrLn "Answer"
     printKey Nothing o
     return ()
