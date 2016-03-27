@@ -1,6 +1,7 @@
 module Utils where
 import OpenSSL.Random
 import Data.Word
+import Data.Bits
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString.Builder as D
@@ -8,7 +9,6 @@ import Crypto.Cipher.AES
 import Crypto.Cipher.Types
 import Codec.Binary.BubbleBabble as X
 import Crypto.Error
-import Types
 import Data.ByteString.Internal (unpackBytes)
 
 
@@ -64,4 +64,11 @@ printKey (Just False) key = putStrLn $ "0:\t" ++ keyString key
 printKey (Just True) key = putStrLn $ "1:\t" ++ keyString key
 printKey Nothing key = putStrLn $ "?:\t" ++ keyString key
 
+bitsToBools :: FiniteBits a => a -> [Bool]
+bitsToBools i = map (testBit i) [0..((finiteBitSize i) - 1) :: Int]
 
+bsToBools :: BS.ByteString -> [Bool]
+bsToBools bs = concatMap bitsToBools $ BS.unpack bs
+
+numBytes :: FiniteBits a => a -> Int
+numBytes n = (finiteBitSize n) `quot` 8

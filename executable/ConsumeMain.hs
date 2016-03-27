@@ -4,9 +4,8 @@ import Network.Socket
 import Network.Socket.ByteString as SBS
 import Utils
 import Types
-
-wordCmp :: [CKey] -> [CKey] -> CKey
-wordCmp n1 n2 = foldl1 (.&.) (zipWith  bij n1 n2)
+import Examples
+import Data.Bits
 
 getSocket :: IO Socket
 getSocket = do
@@ -18,15 +17,15 @@ getSocket = do
     (conn, _) <- accept sock
     return conn
 
-receiveList :: Socket -> Integer -> IO [Key]
+receiveList :: Socket -> Int -> IO [Key]
 receiveList soc num = mapM (const $ SBS.recv soc cipherSize) [1..num]
 
 main :: IO ()
 main = do
     soc <- getSocket
-    keyList <- receiveList soc 32
-    let (theirList, ourList) = splitAt 16 $ map Input keyList
-    (Input o) <- processGate soc $ wordCmp theirList ourList
+    keyList <- receiveList soc (2 * (finiteBitSize testNum)) 
+    let (theirList, ourList) = splitAt (finiteBitSize testNum) $ map Input keyList
+    (Input o) <- processGate soc $ numCmp theirList ourList
     putStrLn "Answer"
     printKey Nothing o
     return ()

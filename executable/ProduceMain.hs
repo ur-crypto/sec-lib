@@ -4,13 +4,11 @@ import Network.Socket
 import Network.Socket.ByteString as SBS
 import Utils
 import Types
+import Examples
+import Data.Bits
 
 testList :: [Bool]
-testList = [True, False, True, True, False, True, True, False,
-            True, False, True, True, False, True, True, False]
-
-wordCmp :: [PKey] -> [PKey] -> PKey
-wordCmp n1 n2 = foldl1 (.&.) (zipWith bij n1 n2)
+testList = bitsToBools testNum
 
 getSocket :: IO Socket
 getSocket = do
@@ -32,15 +30,16 @@ sendList _ _ _ = return $ error "Unbalanced send list"
 
 main :: IO ()
 main = do
-    keyList <- mapM (const genKeyPair) [1..32 :: Integer]
-    let (ourList, theirList) = splitAt 16 (map Input keyList)
-    let boolList = testList ++ testList
+    keyList <- mapM (const genKeyPair) [1..(2*(finiteBitSize testNum))]
+
+    -- mapM (zipWith const (cycle [Just False, Just True]) [1..
+
+    let (ourList, theirList) = splitAt (finiteBitSize testNum) (map Input keyList)
+    let bothList = testList ++ testList
     soc <- getSocket 
-    sendList soc keyList boolList
-    (Input (o0, o1)) <- processGate soc $ wordCmp ourList theirList
+    sendList soc keyList bothList
+    (Input (o0, o1)) <- processGate soc $ numCmp ourList theirList
     putStrLn "Value : Output Key"
     printKey (Just False) o0
     printKey (Just True) o1
-
-    
     return ()

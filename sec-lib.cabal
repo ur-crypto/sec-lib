@@ -23,6 +23,7 @@ library
         Consumer
         Utils
         Types
+        Examples
     build-depends:
         base ==4.8.*,
         HsOpenSSL,
