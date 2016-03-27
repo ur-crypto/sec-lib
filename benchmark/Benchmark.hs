@@ -16,7 +16,6 @@ main = do
         bgroup "32 Bit Number Compare"
             [ bench "True" $ nfIO (doTest (csoc, psoc) (testNum, testNum) numCmp)
             , bench "False" $ nfIO (doTest (csoc, psoc) (testNum, testNum-1) numCmp)
-            , bench "True2" $ nfIO (doTest (csoc, psoc) (testNum, testNum) numCmp)
             ]
         ]
 
