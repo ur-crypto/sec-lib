@@ -9,11 +9,14 @@ module Types (
               , nand
               , bij
               , ifThenElse
+              , TestBool
               )
               where
 import Data.ByteString
 
 type Key = ByteString
+
+type TestBool a = [Value a] -> [Value a] -> Value a
 
 data GateType   = AND
                 | OR

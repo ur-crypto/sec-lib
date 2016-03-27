@@ -2,7 +2,8 @@ module Producer where
 import Utils
 import Types
 import Network.Socket
-import Network.Socket.ByteString
+import qualified Network.Socket.ByteString as SBS
+import Data.Bits
 
 type PKey = Value (Key, Key)
 type PTT = TruthTable (Key, Key, Key)
@@ -10,7 +11,7 @@ type PTT = TruthTable (Key, Key, Key)
 sendInfo :: Socket -> PTT -> IO()
 sendInfo soc (TruthTable r1 r2 r3 r4) = do
     let outkeys = map encOutKey [r1, r2, r3, r4]
-    sendMany soc outkeys
+    SBS.sendMany soc outkeys
 
 processGate :: Socket -> PKey -> IO PKey
 processGate soc (Gate t k1 k2) = do
@@ -34,3 +35,33 @@ processGate soc (Gate t k1 k2) = do
 
 processGate _ (Input a) = return (Input a)
 
+producerGetSocket :: IO Socket
+producerGetSocket = do
+    addrinfos <- getAddrInfo Nothing (Just "localhost") (Just "3000")
+    let serveraddr = head addrinfos
+    soc <- socket (addrFamily serveraddr) Stream defaultProtocol
+    setSocketOption soc ReuseAddr 1
+    connect soc (addrAddress serveraddr)
+    return soc
+
+sendList :: Socket -> [(Key, Key)] -> [Bool] -> IO()
+sendList _ [] [] = return () 
+sendList soc ((kp0, kp1):kps) (b:bs)= do
+    if b
+        then SBS.sendAll soc kp1
+        else SBS.sendAll soc kp0
+    sendList soc kps bs
+
+sendList _ _ _ = return $ error "Unbalanced send list"
+
+--currently no OT takes place...
+produceMain :: (Int, Int) -> TestBool (Key, Key) -> IO (Key, Key)
+produceMain (inputProduce, inputConsume) test = do
+    keyList <- mapM (const genKeyPair) [1..((finiteBitSize inputProduce) + (finiteBitSize inputConsume))]
+    let (ourList, theirList) = splitAt (finiteBitSize inputProduce) (map Input keyList)
+    let bothList = (bitsToBools inputProduce) ++ (bitsToBools inputConsume)
+    soc <- producerGetSocket 
+    sendList soc keyList bothList
+    (Input (o0, o1)) <- Producer.processGate soc $ test ourList theirList
+    close soc
+    return (o0, o1)
