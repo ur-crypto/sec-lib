@@ -35,8 +35,8 @@ processGate soc (Gate t k1 k2) = do
 
 processGate _ (Input a) = return (Input a)
 
-producerGetSocket :: IO Socket
-producerGetSocket = do
+getSocket :: IO Socket
+getSocket = do
     addrinfos <- getAddrInfo Nothing (Just "localhost") (Just "3000")
     let serveraddr = head addrinfos
     soc <- socket (addrFamily serveraddr) Stream defaultProtocol
@@ -54,14 +54,19 @@ sendList soc ((kp0, kp1):kps) (b:bs)= do
 
 sendList _ _ _ = return $ error "Unbalanced send list"
 
---currently no OT takes place...
-produceMain :: (Int, Int) -> TestBool (Key, Key) -> IO (Key, Key)
-produceMain (inputProduce, inputConsume) test = do
+doWithSocket :: Socket -> (Int, Int) -> TestBool (Key, Key) -> IO (Key, Key)
+doWithSocket soc (inputProduce, inputConsume) test =  do
     keyList <- mapM (const genKeyPair) [1..((finiteBitSize inputProduce) + (finiteBitSize inputConsume))]
     let (ourList, theirList) = splitAt (finiteBitSize inputProduce) (map Input keyList)
     let bothList = (bitsToBools inputProduce) ++ (bitsToBools inputConsume)
-    soc <- producerGetSocket 
     sendList soc keyList bothList
     (Input (o0, o1)) <- Producer.processGate soc $ test ourList theirList
-    close soc
     return (o0, o1)
+
+--currently no OT takes place...
+doWithoutSocket :: (Int, Int) -> TestBool (Key, Key) -> IO (Key, Key)
+doWithoutSocket input test = do
+    soc <- getSocket
+    o <- doWithSocket soc input test
+    close soc
+    return o

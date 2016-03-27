@@ -1,4 +1,5 @@
 import Prelude 
+import Utils
 import qualified Consumer as C
 import qualified Producer as P
 import Examples
@@ -18,10 +19,13 @@ parseArgs _ = Nothing
 
 doArgs :: Maybe Mode -> IO()
 doArgs (Just Producer) = do 
-    _ <- P.produceMain (testNum, testNum) numCmp
+    (res0, res1) <- P.doWithoutSocket (testNum, testNum) numCmp
+    printKey (Just False) res0
+    printKey (Just True) res1
     return ()
 doArgs (Just Consumer) = do 
-    _ <- C.consumeMain (testNum, testNum) numCmp
+    res <- C.doWithoutSocket (testNum, testNum) numCmp
+    printKey Nothing res
     return ()
 doArgs Nothing = usage
 

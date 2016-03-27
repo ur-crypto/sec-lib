@@ -4,29 +4,36 @@ import Test.Tasty.Hspec
 import Control.Concurrent.Async
 import Examples
 import Types
+import Network.Socket
 import qualified Producer as P
 import qualified Consumer as C
 
 main :: IO ()
 main = do
-    test <- testSpec "lazy-circuits" spec
+    hcsoc <- async C.getSocket
+    hpsoc <- async P.getSocket
+    csoc <- wait hcsoc
+    psoc <- wait hpsoc
+    test <- testSpec "lazy-circuits" (spec (csoc, psoc))
     Test.Tasty.defaultMain test
 
-spec :: Spec
-spec =  do
-    it "is trivially true" $
+spec :: (Socket, Socket) -> Spec
+spec (csoc, psoc)=  do
+    it "Num Cmp True" $ do
+        res <- doTest (csoc, psoc) (testNum, testNum) numCmp
+        res `shouldBe` True
+    it "Num Cmp False" $ do
+        res <- doTest (csoc, psoc) (testNum, testNum-1) numCmp
+        res `shouldBe` False
+    it "Sockets Close" $ do
+        close csoc
+        close psoc
         True `shouldBe` True
-    it "Num Compare True" $ do
-        res <- doTest (testNum, testNum) numCmp True
-        res `shouldBe` True
-    it "Num Compare False" $ do
-        res <- doTest (testNum, testNum - 1) numCmp False
-        res `shouldBe` True
 
-doTest :: (Int, Int) -> (forall a. TestBool a) -> Bool -> IO Bool
-doTest (inputProduce, inputConsume) test expect = do
-    conOutHandle <- async $ C.consumeMain (inputProduce, inputConsume) test
-    proOutHandle <- async $ P.produceMain (inputProduce, inputConsume) test
+doTest :: (Socket, Socket) -> (Int, Int) -> (forall a. TestBool a) -> IO Bool
+doTest (csoc, psoc) (inputProduce, inputConsume) test = do
+    conOutHandle <- asyncBound $ C.doWithSocket csoc (inputProduce, inputConsume) test
+    proOutHandle <- asyncBound $ P.doWithSocket psoc (inputProduce, inputConsume) test
     conOut <- wait conOutHandle
     (_, proOut1) <- wait proOutHandle
-    return $  (conOut == proOut1) == expect
+    return $ conOut == proOut1

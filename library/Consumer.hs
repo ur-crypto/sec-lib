@@ -38,13 +38,13 @@ processGate soc (Gate _ k1 k2) = do
 
 processGate _ (Input a) = return (Input a)
 
-consumeGetSocket :: IO Socket
-consumeGetSocket = do
+getSocket :: IO Socket
+getSocket = do
     addrinfos <- getAddrInfo (Just (defaultHints {addrFlags = [AI_PASSIVE]})) Nothing (Just "3000")
     let serveraddr = head addrinfos
     sock <- socket (addrFamily serveraddr) Stream defaultProtocol
     setSocketOption sock ReuseAddr 1
-    bindSocket sock (addrAddress serveraddr)
+    bind sock (addrAddress serveraddr)
     listen sock 1
     (conn, _) <- accept sock
     return conn
@@ -52,12 +52,16 @@ consumeGetSocket = do
 receiveList :: Socket -> Int -> IO [Key]
 receiveList soc num = mapM (const $ SBS.recv soc cipherSize) [1..num]
 
-consumeMain :: (Int, Int) -> TestBool Key -> IO B.ByteString
-consumeMain (produceInput, consumeInput) test = do
-    soc <- consumeGetSocket
+doWithSocket :: Socket -> (Int, Int) -> TestBool Key -> IO B.ByteString
+doWithSocket soc (produceInput, consumeInput) test = do
     keyList <- receiveList soc ((finiteBitSize produceInput) + (finiteBitSize consumeInput))
     let (theirList, ourList) = splitAt (finiteBitSize produceInput) $ map Input keyList
     (Input o) <- Consumer.processGate soc $ test theirList ourList
-    close soc
     return o
 
+doWithoutSocket :: (Int, Int) -> TestBool Key -> IO B.ByteString
+doWithoutSocket input test = do
+    soc <- getSocket
+    o <- doWithSocket soc input test
+    close soc
+    return o
