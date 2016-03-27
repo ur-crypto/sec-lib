@@ -1,9 +1,8 @@
-{-# LANGUAGE RankNTypes #-}
 import qualified Test.Tasty
 import Test.Tasty.Hspec
 import Control.Concurrent.Async
 import Examples
-import Types
+import TestUtils
 import Network.Socket
 import qualified Producer as P
 import qualified Consumer as C
@@ -30,10 +29,3 @@ spec (csoc, psoc)=  do
         close psoc
         True `shouldBe` True
 
-doTest :: (Socket, Socket) -> (Int, Int) -> (forall a. TestBool a) -> IO Bool
-doTest (csoc, psoc) (inputProduce, inputConsume) test = do
-    conOutHandle <- asyncBound $ C.doWithSocket csoc (inputProduce, inputConsume) test
-    proOutHandle <- asyncBound $ P.doWithSocket psoc (inputProduce, inputConsume) test
-    conOut <- wait conOutHandle
-    (_, proOut1) <- wait proOutHandle
-    return $ conOut == proOut1

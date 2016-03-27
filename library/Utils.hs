@@ -72,3 +72,4 @@ bsToBools bs = concatMap bitsToBools $ BS.unpack bs
 
 numBytes :: FiniteBits a => a -> Int
 numBytes n = (finiteBitSize n) `quot` 8
+
