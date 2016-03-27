@@ -37,7 +37,7 @@ processGate _ (Input a) = return (Input a)
 
 getSocket :: IO Socket
 getSocket = do
-    addrinfos <- getAddrInfo Nothing (Just "localhost") (Just "3000")
+    addrinfos <- getAddrInfo Nothing (Just "127.0.0.1") (Just "3000")
     let serveraddr = head addrinfos
     soc <- socket (addrFamily serveraddr) Stream defaultProtocol
     setSocketOption soc ReuseAddr 1
