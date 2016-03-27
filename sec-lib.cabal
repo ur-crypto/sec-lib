@@ -56,6 +56,16 @@ executable sec-consume
     hs-source-dirs: executable
     ghc-options: -threaded -Wall
 
+executable lazy-circuits
+    main-is: Executable.hs
+    build-depends:
+        base -any,
+        sec-lib -any,
+        network
+    default-language: Haskell2010
+    hs-source-dirs: executable
+    ghc-options: -threaded -Wall
+
 test-suite sec-lib-test-suite
     type: exitcode-stdio-1.0
     main-is: TestSuite.hs
