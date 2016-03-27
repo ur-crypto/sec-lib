@@ -1,6 +1,5 @@
 module Examples where
 import Types
-import Utils
 
 testNum :: Int
 testNum = 1234567890
