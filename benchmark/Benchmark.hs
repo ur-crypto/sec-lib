@@ -14,7 +14,8 @@ main = do
     psoc <- wait hpsoc
     Criterion.Main.defaultMain [
         bgroup "32 Bit Number Compare"
-            [ bench "True" $ nfIO (doTest (csoc, psoc) (testNum, testNum) numCmp)
+            [ bench "Fill" $ nfIO (doTest (csoc, psoc) (testNum, testNum) numCmp)
+            , bench "True" $ nfIO (doTest (csoc, psoc) (testNum, testNum) numCmp)
             , bench "False" $ nfIO (doTest (csoc, psoc) (testNum, testNum-1) numCmp)
             ]
         ]

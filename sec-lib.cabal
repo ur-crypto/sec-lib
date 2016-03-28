@@ -28,8 +28,8 @@ library
     build-depends:
         base ==4.8.*,
         HsOpenSSL,
+        bytedump,
         bytestring,
-        Crypto,
         binary,
         cryptonite,
         network,
