@@ -7,9 +7,8 @@ import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString.Builder as D
 import Crypto.Cipher.AES
 import Crypto.Cipher.Types
-import Codec.Binary.BubbleBabble as X
 import Crypto.Error
-import Data.ByteString.Internal (unpackBytes)
+import Text.Bytedump
 
 
 -- In Bytes
@@ -57,7 +56,7 @@ decOutKey (a, b, o) =
     
 
 keyString :: BS.ByteString -> String
-keyString key = X.encode . unpackBytes $ key
+keyString = dumpBS
 
 printKey :: Maybe Bool -> BS.ByteString -> IO()
 printKey (Just False) key = putStrLn $ "0:\t" ++ keyString key
