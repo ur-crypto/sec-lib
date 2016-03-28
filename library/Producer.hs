@@ -54,17 +54,18 @@ sendList soc ((kp0, kp1):kps) (b:bs)= do
 
 sendList _ _ _ = return $ error "Unbalanced send list"
 
-doWithSocket :: Socket -> (Int, Int) -> TestBool (Key, Key) -> IO (Key, Key)
+doWithSocket ::FiniteBits a => Socket -> (a, a) -> TestBool (Key, Key) -> IO (Key, Key)
 doWithSocket soc (inputProduce, inputConsume) test =  do
     keyList <- mapM (const genKeyPair) [1..((finiteBitSize inputProduce) + (finiteBitSize inputConsume))]
     let (ourList, theirList) = splitAt (finiteBitSize inputProduce) (map Input keyList)
     let bothList = (bitsToBools inputProduce) ++ (bitsToBools inputConsume)
     sendList soc keyList bothList
+    print $ test ourList theirList
     (Input (o0, o1)) <- Producer.processGate soc $ test ourList theirList
     return (o0, o1)
 
 --currently no OT takes place...
-doWithoutSocket :: (Int, Int) -> TestBool (Key, Key) -> IO (Key, Key)
+doWithoutSocket :: FiniteBits a => (a, a) -> TestBool (Key, Key) -> IO (Key, Key)
 doWithoutSocket input test = do
     soc <- getSocket
     o <- doWithSocket soc input test

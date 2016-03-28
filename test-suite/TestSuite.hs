@@ -18,11 +18,29 @@ main = do
 
 spec :: (Socket, Socket) -> Spec
 spec (csoc, psoc)=  do
-    it "Num Cmp True" $ do
-        res <- doTest (csoc, psoc) (testNum, testNum) numCmp
+    it "Num Cmp 8 True" $ do
+        res <- doTest (csoc, psoc) (test8, test8) numCmp
         res `shouldBe` True
-    it "Num Cmp False" $ do
-        res <- doTest (csoc, psoc) (testNum, testNum-1) numCmp
+    it "Num Cmp 8 False" $ do
+        res <- doTest (csoc, psoc) (test8, test8-1) numCmp
+        res `shouldBe` False
+    it "Num Cmp 16 True" $ do
+        res <- doTest (csoc, psoc) (test16, test16) numCmp
+        res `shouldBe` True
+    it "Num Cmp 16 False" $ do
+        res <- doTest (csoc, psoc) (test16, test16-1) numCmp
+        res `shouldBe` False
+    it "Num Cmp 32 True" $ do
+        res <- doTest (csoc, psoc) (test32, test32) numCmp
+        res `shouldBe` True
+    it "Num Cmp 32 False" $ do
+        res <- doTest (csoc, psoc) (test32, test32-1) numCmp
+        res `shouldBe` False
+    it "Num Cmp 64 True" $ do
+        res <- doTest (csoc, psoc) (test64, test64) numCmp
+        res `shouldBe` True
+    it "Num Cmp 64 False" $ do
+        res <- doTest (csoc, psoc) (test64, test64-1) numCmp
         res `shouldBe` False
     it "Sockets Close" $ do
         close csoc

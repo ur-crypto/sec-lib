@@ -36,7 +36,7 @@ library
         async
     default-language: Haskell2010
     hs-source-dirs: library
-    ghc-options: -Wall
+    ghc-options: -O -threaded -Wall -fno-full-laziness
 
 executable lazy-circuits
     main-is: Executable.hs
@@ -61,7 +61,7 @@ test-suite sec-lib-test-suite
         network
     default-language: Haskell2010
     hs-source-dirs: test-suite
-    ghc-options: -threaded -Wall 
+    ghc-options: -threaded -Wall -Werror
 
 benchmark sec-lib-benchmark
     type: exitcode-stdio-1.0
@@ -74,4 +74,4 @@ benchmark sec-lib-benchmark
         network
     default-language: Haskell2010
     hs-source-dirs: benchmark
-    ghc-options: -threaded -Wall
+    ghc-options: -threaded -Wall -Werror -fno-full-laziness -O

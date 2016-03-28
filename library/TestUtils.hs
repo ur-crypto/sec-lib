@@ -6,8 +6,9 @@ import qualified Consumer as C
 import qualified Producer as P
 import Control.Concurrent.Async
 import Types
+import Data.Bits
 
-doTest :: (Socket, Socket) -> (Int, Int) -> (forall a. TestBool a) -> IO Bool
+doTest :: FiniteBits b => (Socket, Socket) -> (b, b) -> (forall a. TestBool a) -> IO Bool
 doTest (csoc, psoc) (inputProduce, inputConsume) test = do
     conOutHandle <- asyncBound $ C.doWithSocket csoc (inputProduce, inputConsume) test
     proOutHandle <- asyncBound $ P.doWithSocket psoc (inputProduce, inputConsume) test

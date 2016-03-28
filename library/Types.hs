@@ -22,9 +22,9 @@ data GateType   = AND
                 | OR
                 | XOR
                 | NAND
-                | BIJ
+                | BIJ deriving(Show)
 data Value a    = Gate GateType (Value a) (Value a)
-                | Input a
+                | Input a deriving(Show)
 data TruthTable a = TruthTable a a a a
 
 --Circuit Macros

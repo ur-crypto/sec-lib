@@ -52,14 +52,14 @@ getSocket = do
 receiveList :: Socket -> Int -> IO [Key]
 receiveList soc num = mapM (const $ SBS.recv soc cipherSize) [1..num]
 
-doWithSocket :: Socket -> (Int, Int) -> TestBool Key -> IO B.ByteString
+doWithSocket :: FiniteBits a => Socket -> (a, a) -> TestBool Key -> IO B.ByteString
 doWithSocket soc (produceInput, consumeInput) test = do
     keyList <- receiveList soc ((finiteBitSize produceInput) + (finiteBitSize consumeInput))
     let (theirList, ourList) = splitAt (finiteBitSize produceInput) $ map Input keyList
     (Input o) <- Consumer.processGate soc $ test theirList ourList
     return o
 
-doWithoutSocket :: (Int, Int) -> TestBool Key -> IO B.ByteString
+doWithoutSocket ::FiniteBits a => (a, a) -> TestBool Key -> IO B.ByteString
 doWithoutSocket input test = do
     soc <- getSocket
     o <- doWithSocket soc input test
