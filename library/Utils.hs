@@ -1,5 +1,6 @@
 module Utils where
 import OpenSSL.Random
+import OpenSSL
 import Data.Word
 import Data.Bits
 import qualified Data.ByteString as BS
@@ -29,7 +30,7 @@ zeroBuilder :: D.Builder
 zeroBuilder = D.byteString zeros
 
 genKeyPair :: IO (BS.ByteString, BS.ByteString)
-genKeyPair = do
+genKeyPair = withOpenSSL $ do
     k1 <- randBytes keyLength
     k2 <- randBytes keyLength
     let k1Builder = mappend (D.byteString k1) zeroBuilder

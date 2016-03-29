@@ -4,6 +4,7 @@ import Types
 import Network.Socket
 import qualified Network.Socket.ByteString as SBS
 import Data.Bits
+import Control.Concurrent
 
 type PKey = Value (Key, Key)
 type PTT = TruthTable (Key, Key, Key)
@@ -37,6 +38,7 @@ processGate _ (Input a) = return (Input a)
 
 getSocket :: IO Socket
 getSocket = do
+    threadDelay 1000 --for testing purposes, makes it more likely other thread will be accepting
     addrinfos <- getAddrInfo Nothing (Just "127.0.0.1") (Just "3000")
     let serveraddr = head addrinfos
     soc <- socket (addrFamily serveraddr) Stream defaultProtocol
@@ -60,7 +62,6 @@ doWithSocket soc (inputProduce, inputConsume) test =  do
     let (ourList, theirList) = splitAt (finiteBitSize inputProduce) (map Input keyList)
     let bothList = (bitsToBools inputProduce) ++ (bitsToBools inputConsume)
     sendList soc keyList bothList
-    print $ test ourList theirList
     (Input (o0, o1)) <- Producer.processGate soc $ test ourList theirList
     return (o0, o1)
 
