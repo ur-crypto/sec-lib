@@ -15,31 +15,31 @@ test32 :: Int32
 test32 = 1234567890
 
 testb64 :: Int64
-testb64 = 64 
+testb64 = 100 
 
 test64 :: Int64
-test64 = 64
+test64 = 164
 
-caddInt [n1] [n2] = (n1 .&. n2)
+caddInt [n1] [n2] = (n1 && n2)
 
 caddInt (n1:n1s) (n2:n2s) = 
        let xsum = Gate XOR n1 n2
-           asum = (n1 .&. n2)
+           asum = (n1 && n2)
            x = caddInt n1s n2s in
-       (asum .|. (xsum .&. x)) 
+       (asum || (xsum && x)) 
 
 
 
 addInt [n1] [n2] =
        let xsum = Gate XOR n1 n2
-           asum = (n1 .&. n2) in
+           asum = (n1 && n2) in
        (asum:xsum:[])
 addInt (n1:n1s) (n2:n2s) = 
        let xsum = Gate XOR n1 n2
-           asum = (n1 .&. n2)
+           asum = (n1 && n2)
            x = head(addInt n1s n2s)
            xs = tail (addInt n1s n2s) in
-       (((asum .|. (xsum .&. x)):(Gate XOR xsum x):[])++xs) 
+       (((asum || (xsum && x)):(Gate XOR xsum x):[])++xs) 
 
 numPltC :: TestBool a
 numPltC [n1] [n2] = 
