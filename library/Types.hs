@@ -3,8 +3,8 @@ module Types (
               , GateType(..)
               , Key
               , TruthTable(..)
-              , (.&.)
-              , (.|.)
+              , (&&)
+              , (||)
               , xor
               , nand
               , bij
@@ -13,6 +13,7 @@ module Types (
               )
               where
 import Data.ByteString
+import Prelude hiding ((&&), (||))
 
 type Key = ByteString
 
@@ -28,10 +29,10 @@ data Value a    = Gate GateType (Value a) (Value a)
 data TruthTable a = TruthTable a a a a
 
 --Circuit Macros
-(.&.) :: Value a -> Value a -> Value a
-(.&.) = Gate AND
-(.|.) :: Value a -> Value a -> Value a
-(.|.) = Gate OR
+(&&) :: Value a -> Value a -> Value a
+(&&) = Gate AND
+(||) :: Value a -> Value a -> Value a
+(||) = Gate OR
 xor :: Value a -> Value a -> Value a
 xor = Gate XOR 
 nand :: Value a -> Value a -> Value a
@@ -43,5 +44,5 @@ bij = Gate BIJ
 ifThenElse :: Value a -> Value a -> Value a -> Value a
 ifThenElse bool tb fb = 
     let nbool = Gate NAND bool bool in
-    ((bool .&. tb) .|. (nbool .&. fb))
+    ((bool && tb) || (nbool && fb))
 
