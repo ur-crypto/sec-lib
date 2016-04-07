@@ -19,12 +19,12 @@ parseArgs _ = Nothing
 
 doArgs :: Maybe Mode -> IO()
 doArgs (Just Producer) = do 
-    (res0, res1) <- P.doWithoutSocket (testb64, test64) numGT
+    (res0, res1) <- P.doWithoutSocket (testb64, test64) caddInt 
     printKey (Just False) res0
     printKey (Just True) res1
     return ()
 doArgs (Just Consumer) = do 
-    res <- C.doWithoutSocket (testb64, test64) numGT
+    res <- C.doWithoutSocket (testb64, test64) caddInt
     printKey Nothing res
     return ()
 doArgs Nothing = usage
