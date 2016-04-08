@@ -36,7 +36,7 @@ library
         async
     default-language: Haskell2010
     hs-source-dirs: library
-    ghc-options: -threaded -Wall
+    ghc-options: -threaded -Wall -O2
 
 executable lazy-circuits
     main-is: Executable.hs
@@ -44,10 +44,11 @@ executable lazy-circuits
         base -any,
         sec-lib -any,
         network,
-        bytestring
+        bytestring,
+        async
     default-language: Haskell2010
     hs-source-dirs: executable
-    ghc-options: -threaded -Wall
+    ghc-options: -threaded -Wall -O2
 
 test-suite sec-lib-test-suite
     type: exitcode-stdio-1.0
