@@ -32,7 +32,7 @@ doArgs (Just Both) = do
     hpsoc <- async P.getSocket
     csoc <- wait hcsoc
     psoc <- wait hpsoc
-    printTest (csoc, psoc) (15 :: Int64, 15 :: Int64) addInt
+    printTest (csoc, psoc) (1 :: Int64, 1 :: Int64) addInt
 doArgs Nothing = usage
 
 main :: IO()
