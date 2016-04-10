@@ -54,7 +54,6 @@ decOutKey (a, b, o) =
     if z == zeros
         then Just check
         else Nothing
-    
 
 keyString :: BS.ByteString -> String
 keyString = dumpBS
@@ -65,7 +64,7 @@ printKey (Just True) key = putStrLn $ "1:\t" ++ keyString key
 printKey Nothing key = putStrLn $ "?:\t" ++ keyString key
 
 bitsToBools :: FiniteBits a => a -> [Bool]
-bitsToBools i = map (testBit i) [0..((finiteBitSize i) - 1) :: Int]
+bitsToBools i = reverse $ map (testBit i) [0..((finiteBitSize i) - 1) :: Int]
 
 bsToBools :: BS.ByteString -> [Bool]
 bsToBools bs = concatMap bitsToBools $ BS.unpack bs

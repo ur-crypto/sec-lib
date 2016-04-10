@@ -22,22 +22,17 @@ parseArgs _ = Nothing
 
 doArgs :: Maybe Mode -> IO()
 doArgs (Just Producer) = do 
-    (res0, res1) <- P.doWithoutSocket (testb64, test64) addInt 
-    printKey (Just False) res0
-    printKey (Just True) res1
-    return ()
+    res <- P.doWithoutSocket (testb64, test64) addInt
+    print res
 doArgs (Just Consumer) = do 
     res <- C.doWithoutSocket (testb64, test64) addInt
-    printKey Nothing res
-    return ()
+    print res
 doArgs (Just Both) = do
     hcsoc <- async C.getSocket
     hpsoc <- async P.getSocket
     csoc <- wait hcsoc
     psoc <- wait hpsoc
-    let test = numCmp
-    printTest (csoc, psoc) (1 :: Int64, -1 :: Int64) xor
-    return ()
+    printTest (csoc, psoc) (15 :: Int64, 15 :: Int64) addInt
 doArgs Nothing = usage
 
 main :: IO()
