@@ -8,10 +8,12 @@ import Control.Concurrent.Async
 import Types
 import Data.Bits
 
-doTest :: FiniteBits b => (Socket, Socket) -> (b, b) -> (forall a. TestBool a) -> IO Bool
+doTest :: FiniteBits b => (Socket, Socket) -> (b, b) -> (forall a. SecureFunction a) -> IO [Bool]
 doTest (csoc, psoc) (inputProduce, inputConsume) test = do
     conOutHandle <- asyncBound $ C.doWithSocket csoc (inputProduce, inputConsume) test
     proOutHandle <- asyncBound $ P.doWithSocket psoc (inputProduce, inputConsume) test
-    conOut <- wait conOutHandle
-    (_, proOut1) <- wait proOutHandle
-    return $ conOut == proOut1
+    con <- wait conOutHandle
+    pro <- wait proOutHandle
+    if foldl (&&) True (zipWith (==) con pro)
+        then return con
+        else error "disagreement on answer"

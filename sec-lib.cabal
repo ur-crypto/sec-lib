@@ -25,6 +25,7 @@ library
         Types
         Examples
         TestUtils
+        Ops
     build-depends:
         base ==4.8.*,
         HsOpenSSL,

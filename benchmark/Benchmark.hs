@@ -14,10 +14,10 @@ main = do
     psoc <- wait hpsoc
     Criterion.Main.defaultMain [
         bgroup "Integer Compare"
-            [ bench "8" $ nfIO (doTest (csoc, psoc) (test8, test8) numCmp)
-            , bench "16" $ nfIO (doTest (csoc, psoc) (test16, test16) numCmp)
-            , bench "32" $ nfIO (doTest (csoc, psoc) (test32, test32) numCmp)
-            , bench "64" $ nfIO (doTest (csoc, psoc) (test64, test64) numCmp)
+            [ bench "8" $ nfIO (doTest (csoc, psoc) (test8, test8) numEq)
+            , bench "16" $ nfIO (doTest (csoc, psoc) (test16, test16) numEq)
+            , bench "32" $ nfIO (doTest (csoc, psoc) (test32, test32) numEq)
+            , bench "64" $ nfIO (doTest (csoc, psoc) (test64, test64) numEq)
             ]
         ]
 

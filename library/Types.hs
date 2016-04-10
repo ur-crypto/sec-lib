@@ -1,48 +1,28 @@
 module Types (
-                Value(..)
+                Node(..)
               , GateType(..)
               , Key
               , TruthTable(..)
-              , (&&)
-              , (||)
-              , xor
-              , nand
-              , bij
-              , ifThenElse
-              , TestBool
+              , SecureFunction
               )
               where
-import Data.ByteString
-import Prelude hiding ((&&), (||))
 
-type Key = ByteString
+import Data.ByteString as BS
+import qualified Prelude as P
 
-type TestBool a = [Value a] -> [Value a] -> Value a
+type Key = BS.ByteString
+
+type SecureFunction a = [Node a] -> [Node a] -> [Node a]
 
 data GateType   = AND
                 | OR
                 | XOR
                 | NAND
-                | BIJ deriving(Show)
-data Value a    = Gate GateType (Value a) (Value a)
-                | Input a deriving(Show)
+                | BIJ deriving(P.Show)
+
+data Node a    = Gate GateType (Node a) (Node a)
+                | Constant P.Bool
+                | Input a deriving(P.Show)
+
 data TruthTable a = TruthTable a a a a
-
---Circuit Macros
-(&&) :: Value a -> Value a -> Value a
-(&&) = Gate AND
-(||) :: Value a -> Value a -> Value a
-(||) = Gate OR
-xor :: Value a -> Value a -> Value a
-xor = Gate XOR 
-nand :: Value a -> Value a -> Value a
-nand = Gate NAND
-bij :: Value a -> Value a -> Value a
-bij = Gate BIJ
-
---If Then Else Macro
-ifThenElse :: Value a -> Value a -> Value a -> Value a
-ifThenElse bool tb fb = 
-    let nbool = Gate NAND bool bool in
-    ((bool && tb) || (nbool && fb))
 
