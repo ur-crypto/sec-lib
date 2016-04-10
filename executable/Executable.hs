@@ -2,9 +2,11 @@ import Prelude
 import qualified Consumer as C
 import qualified Producer as P
 import Control.Concurrent.Async
+import Ops
 import Examples
+import TestUtils
 import System.Environment
-
+import Data.Int
     
 data Mode = Producer | Consumer | Both
 
@@ -32,15 +34,9 @@ doArgs (Just Both) = do
     hpsoc <- async P.getSocket
     csoc <- wait hcsoc
     psoc <- wait hpsoc
-    conOutHandle <- asyncBound $ C.doWithSocket csoc (test64, testb64) numCmp
-    proOutHandle <- asyncBound $ P.doWithSocket psoc (test64, testb64) numCmp
-    conOut <- wait conOutHandle
-    proOut <- wait proOutHandle
-    print conOut
-    print proOut
+    let test = numCmp
+    printTest (csoc, psoc) (1 :: Int64, -1 :: Int64) xor
     return ()
-
-
 doArgs Nothing = usage
 
 main :: IO()
