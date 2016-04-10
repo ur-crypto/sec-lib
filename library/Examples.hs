@@ -1,8 +1,8 @@
 module Examples where
 import Types
-import Utils
+import Ops
 import Data.Int
-import Prelude hiding ((&&), (||))
+import Prelude hiding ((&&), (||), ifThenElse)
 
 
 test8 :: Int8
@@ -41,14 +41,18 @@ addInt (n1:n1s) (n2:n2s) =
            xs = tail (addInt n1s n2s) in
        (((asum || (xsum && x)):(Gate XOR xsum x):[])++xs) 
 
-numPltC :: TestBool a
-numPltC [n1] [n2] = 
-       let nbool = Gate NAND n2 n2 in
-       n1 && nbool
-numPltC (n1:n1s) (n2:n2s) =
-       let nbool = Gate NAND n2 n2 
-           mbool = Gate NAND n1 n1 in
-       ifThenElse ( n1 && nbool) n1 (ifThenElse (mbool && n2) n1 (numPltC n1s n2s))
+numCmp :: SecureFunction a
+numCmp as bs = [imp as bs]
+    where
+    imp :: [Node a] -> [Node a] -> Node a
+    imp [n1] [n2] = 
+           let nbool = Gate NAND n2 n2 in
+           n1 && nbool
+    imp (n1:n1s) (n2:n2s) =
+           let nbool = Gate NAND n2 n2 
+               mbool = Gate NAND n1 n1 in
+           ifThenElse ( n1 && nbool) n1 (ifThenElse (mbool && n2) n1 (imp n1s n2s))
+    imp _ _ = error "Bad args for imp"
 
-numCmp :: TestBool a
-numCmp n1 n2 = foldl1 (&&) (zipWith bij n1 n2)
+numEq :: SecureFunction a
+numEq n1 n2 = [foldl1 (&&) (zipWith bij n1 n2)]
