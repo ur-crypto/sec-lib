@@ -46,11 +46,11 @@ numCmp as bs = [imp as bs]
     where
     imp :: [Node a] -> [Node a] -> Node a
     imp [n1] [n2] = 
-           let nbool = nand n2 n2 in
+           let nbool = Gate NAND n2 n2 in
            n1 && nbool
     imp (n1:n1s) (n2:n2s) =
-           let nbool = nand n2 n2 
-               mbool = nand n1 n1 in
+           let nbool = Gate NAND n2 n2 
+               mbool = Gate NAND n1 n1 in
            ifThenElse ( n1 && nbool) n1 (ifThenElse (mbool && n2) n1 (imp n1s n2s))
     imp _ _ = error "Bad args for imp"
 
