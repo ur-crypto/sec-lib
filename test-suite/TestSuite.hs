@@ -5,6 +5,8 @@ import Control.Concurrent.Async
 import Examples
 import TestUtils
 import Types
+import Utils
+import qualified Ops as O
 import Network.Socket
 import qualified Producer as P
 import qualified Consumer as C
@@ -34,10 +36,12 @@ spec (csoc, psoc)=  do
     it "Num Cmp 64 False" $ boolTest numCmp test64 test64 False
     it "Num Cmp 64 False" $ boolTest numCmp test64 (test64+1) False
 
+    it "Num XOR 64 True" $ listTest (O.xor) (15 :: Int64) (20 :: Int64) ((xor) (15 :: Int64) (20 :: Int64))
+
     it "Num Cmp 8 All" $ do
         let nums = [minBound :: Int8 .. maxBound :: Int8] 
         let numCombos = [ (x, y) | x<-nums, y<-nums ] --idk how this works but it sure is pretty
-        let numAnswers = map (\xt -> case xt of (x, y) -> [x < y]) numCombos
+        let numAnswers = map (\xt -> case xt of (x, y) -> [x > y]) numCombos
         ourAnswers <- mapM (\x -> doTest (csoc, psoc) x numCmp) numCombos
         ourAnswers `shouldBe` numAnswers
     it "Sockets Close" $ do
@@ -47,3 +51,5 @@ spec (csoc, psoc)=  do
     where
     boolTest :: FiniteBits b => (forall a. SecureFunction a) -> b -> b -> Bool -> Expectation
     boolTest test num1 num2 expect = (doTest (csoc, psoc) (num1, num2) test) `shouldReturn` [expect]
+    listTest  :: FiniteBits b => (forall a. SecureFunction a) -> b -> b -> b -> Expectation
+    listTest test num1 num2 res = (doTest (csoc, psoc) (num1, num2) test) `shouldReturn` (bitsToBools res)
