@@ -14,9 +14,12 @@ test16 = 125
 testb16 :: Int16
 testb16 = 200
 
-
 test32 :: Int32
-test32 = 1234567890
+test32 = 39393 
+
+
+testb32 :: Int32
+testb32 = 120200
 
 testb64 :: Int64
 testb64 = 2384 
@@ -50,8 +53,8 @@ addIntF m1 [n1] m2 [n2] = if (m1==1) then
                           else (2,(n1 && n2,((Gate XOR n1 n2):[])))
 
 addIntF m1 (n1:n1s) m2 (n2:n2s) = 
-  let cond1 = (m1 > 8) 
-      cond2 = (m2 > 8)
+  let cond1 = (m1 > 5) 
+      cond2 = (m2 > 5)
       cond3 = (m1 > m2)
       cond4 = (m1 < m2) in
       case (cond1,cond2,cond3,cond4) of
@@ -59,7 +62,7 @@ addIntF m1 (n1:n1s) m2 (n2:n2s) =
           (True,False,_,_)            -> addIntF (m1-1) n1s m2 (n2:n2s) 
           (False,True,_,_)            -> addIntF m1 (n1:n1s) (m2-1) n2s 
           (False,False,False,False)   -> let (len,(carry,remsum)) = addIntF (m1-1) n1s (m2-1) n2s in
-                                         (len+1,(((carry || n1) && (carry || n2) && (n1||n2)),((Gate XOR n1 (Gate XOR n2 carry)):[])++remsum))
+                                         (len+1,(((carry && n1) || (carry && n2) || (n1&&n2)),((Gate XOR n1 (Gate XOR n2 carry)):[])++remsum))
           (False,False,True,_)        -> let (len,(carry,remsum)) = addIntF (m1-1) n1s m2 (n2:n2s) in
                                          (len+1,((carry && n1),((Gate XOR n1 carry):[])++remsum))
           (False,False,False,True)    -> let (len,(carry,remsum)) = addIntF m1 (n1:n1s) (m2-1) n2s in

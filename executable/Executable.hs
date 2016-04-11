@@ -22,10 +22,10 @@ parseArgs _ = Nothing
 
 doArgs :: Maybe Mode -> IO()
 doArgs (Just Producer) = do 
-    res <- P.doWithoutSocket (test32, test32) hammingDist 
+    res <- P.doWithoutSocket (test32, testb32) hammingDist 
     print res
 doArgs (Just Consumer) = do 
-    res <- C.doWithoutSocket (test32, test32) hammingDist
+    res <- C.doWithoutSocket (test32, testb32) hammingDist
     print res
 doArgs (Just Both) = do
     hcsoc <- async C.getSocket
