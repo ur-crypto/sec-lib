@@ -15,10 +15,10 @@ test32 :: Int32
 test32 = 1234567890
 
 testb64 :: Int64
-testb64 = 100 
+testb64 = 2384 
 
 test64 :: Int64
-test64 = 164
+test64 = 5345
 
 caddInt [n1] [n2] = (n1 && n2)
 
