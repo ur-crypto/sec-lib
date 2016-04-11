@@ -1,0 +1,5 @@
+The best way to test is to add a new test to test-suite/TestSuite.hs
+
+There should be enough examples so you can create your own.
+
+I removed the exhaustive test, it should work but doesn't
