@@ -1,4 +1,5 @@
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
 import qualified Test.Tasty
 import Test.Tasty.Hspec
 import Control.Concurrent.Async
@@ -38,12 +39,7 @@ spec (csoc, psoc)=  do
 
     it "Num XOR 64 True" $ listTest (O.xor) (15 :: Int64) (20 :: Int64) ((xor) (15 :: Int64) (20 :: Int64))
 
-    --it "Num Cmp 8 All" $ do
-    --  let nums = [minBound :: Int8 .. maxBound :: Int8] 
-    --  let numCombos = [ (x, y) | x<-nums, y<-nums ] --idk how this works but it sure is pretty
-    --  let numAnswers = map (\xt -> case xt of (x, y) -> [x > y]) numCombos
-    --  ourAnswers <- mapM (\x -> doTest (csoc, psoc) x numCmp) numCombos
-    --  ourAnswers `shouldBe` numAnswers
+    it "Num Cmp 8 All" $ exhaustiveTest (O.xor) (xor)
     it "Sockets Close" $ do
         close csoc
         close psoc
@@ -51,5 +47,14 @@ spec (csoc, psoc)=  do
     where
     boolTest :: FiniteBits b => (forall a. SecureFunction a) -> b -> b -> Bool -> Expectation
     boolTest test num1 num2 expect = (doTest (csoc, psoc) (num1, num2) test) `shouldReturn` [expect]
+
     listTest  :: FiniteBits b => (forall a. SecureFunction a) -> b -> b -> b -> Expectation
     listTest test inputNum inputNum2 expectedNumber = (doTest (csoc, psoc) (inputNum, inputNum2) test) `shouldReturn` (bitsToBools expectedNumber)
+
+    exhaustiveTest :: (forall a. SecureFunction a) -> (forall b. FiniteBits b => b -> b -> b) -> Expectation
+    exhaustiveTest test equivalent = do
+      let nums = [minBound :: Int8 .. maxBound :: Int8]
+      let numCombos = [ (x, y) | x<-nums, y<-nums ] --idk how this works but it sure is pretty
+      let numAnswers = map (\xt -> case xt of (x, y) -> bitsToBools $ (equivalent) x y) numCombos
+      ourAnswers <- mapM (\x -> doTest (csoc, psoc) x test) numCombos
+      ourAnswers `shouldBe` numAnswers

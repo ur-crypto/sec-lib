@@ -38,7 +38,6 @@ processGates soc gates = mapM processGate gates
         let (x3, x4) = B.splitAt cipherSize r2
         return $ TruthTable x1 x2 x3 x4
 
-
 getSocket :: IO Socket
 getSocket = do
     addrinfos <- getAddrInfo (Just (defaultHints {addrFlags = [AI_PASSIVE]})) Nothing (Just "3000")
