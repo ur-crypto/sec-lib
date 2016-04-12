@@ -31,14 +31,6 @@ testb8 :: Int8
 testb8 = 12
 
 
-caddInt [n1] [n2] = (n1 && n2)
-
-caddInt (n1:n1s) (n2:n2s) = 
-       let xsum = Gate XOR n1 n2
-           asum = (n1 && n2)
-           x = caddInt n1s n2s in
-       (asum || (xsum && x)) 
-
 
 addIntFP :: Int -> Int -> [Node a1] -> Int -> [Node a1] -> (Int, (Node a1, [Node a1]))
 addIntFP p m1 [n1] m2 [n2] = (1,(n1 && n2,((Gate XOR n1 n2):[])))
@@ -66,28 +58,6 @@ subCompute (p1:p1s) (g1:g1s) =
           
 
 
-addIntF :: Int -> [Node a1] -> Int -> [Node a1] -> (Int, (Node a1, [Node a1]))
-addIntF m1 [n1] m2 [n2] = if (m1==1) then 
-                                     if (m2==1) then
-                                                (2,(n1 && n2,((Gate XOR n1 n2):[])))
-                                     else (2,(n1 && n2,((Gate XOR n1 n2):[])))
-                          else (2,(n1 && n2,((Gate XOR n1 n2):[])))
-
-addIntF m1 (n1:n1s) m2 (n2:n2s) = 
-  let cond1 = (m1 > 5) 
-      cond2 = (m2 > 5)
-      cond3 = (m1 > m2)
-      cond4 = (m1 < m2) in
-      case (cond1,cond2,cond3,cond4) of
-          (True,True,_,_)             -> addIntF (m1-1) n1s (m2-1) n2s 
-          (True,False,_,_)            -> addIntF (m1-1) n1s m2 (n2:n2s) 
-          (False,True,_,_)            -> addIntF m1 (n1:n1s) (m2-1) n2s 
-          (False,False,False,False)   -> let (len,(carry,remsum)) = addIntF (m1-1) n1s (m2-1) n2s in
-                                         (len+1,(((carry && n1) || (carry && n2) || (n1&&n2)),((Gate XOR n1 (Gate XOR n2 carry)):[])++remsum))
-          (False,False,True,_)        -> let (len,(carry,remsum)) = addIntF (m1-1) n1s m2 (n2:n2s) in
-                                         (len+1,((carry && n1),((Gate XOR n1 carry):[])++remsum))
-          (False,False,False,True)    -> let (len,(carry,remsum)) = addIntF m1 (n1:n1s) (m2-1) n2s in
-                                         (len+1,((carry && n2),((Gate XOR n2 carry):[])++remsum)) 
 numCmp :: SecureFunction a
 numCmp as bs = [imp as bs]
     where
