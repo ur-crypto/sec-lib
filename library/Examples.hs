@@ -22,10 +22,10 @@ testb32 :: Int32
 testb32 = 120200
 
 testb64 :: Int64
-testb64 = 2384 
+testb64 = 744073709551616 
 
 test64 :: Int64
-test64 = 5345
+test64 = 395648674974903
 
 testb8 :: Int8
 testb8 = 12
@@ -39,11 +39,32 @@ caddInt (n1:n1s) (n2:n2s) =
            x = caddInt n1s n2s in
        (asum || (xsum && x)) 
 
-lbij n1 n2 = let result = bij n1 n2 in ((Gate NAND result result):[])
 
+addIntFP :: Int -> Int -> [Node a1] -> Int -> [Node a1] -> (Int, (Node a1, [Node a1]))
+addIntFP p m1 [n1] m2 [n2] = (1,(n1 && n2,((Gate XOR n1 n2):[])))
+addIntFP p m1 (n1:n1s) m2 (n2:n2s) = 
+  let cond1 = (m1 > p) 
+      cond2 = (m2 > p)
+      cond3 = (m1 > m2)
+      cond4 = (m1 < m2) in
+      case (cond1,cond2,cond3,cond4) of
+          (True,True,_,_)             -> addIntFP p (m1-1) n1s (m2-1) n2s 
+          (True,False,_,_)            -> addIntFP p (m1-1) n1s m2 (n2:n2s) 
+          (False,True,_,_)            -> addIntFP p m1 (n1:n1s) (m2-1) n2s 
+          (False,False,False,False)   -> let generate = (n1:n1s) .&. (n2:n2s)
+                                             propogate = xor (n1:n1s) (n2:n2s) in
+                                             subCompute propogate generate  
+          (False,False,True,_)        -> let (len,(carry,remsum)) = addIntFP p (m1-1) n1s m2 (n2:n2s) in
+                                         (len+1,((carry && n1),((Gate XOR n1 carry):[])++remsum))
+          (False,False,False,True)    -> let (len,(carry,remsum)) = addIntFP p m1 (n1:n1s) (m2-1) n2s in
+                                         (len+1,((carry && n2),((Gate XOR n2 carry):[])++remsum)) 
 
---addTwice [n1] [n2] = (n1:n2:[])
-addTwice n1 n2 = addInt n1 (addInt n1 n2)
+subCompute [p1] [g1]  = (1,(g1,p1:[]))
+subCompute (p1:p1s) (g1:g1s) =
+      let (len,(carry,prevcarry)) = subCompute p1s g1s in
+          (len+1,((Gate XOR g1 (carry && p1)),(((Gate XOR p1 carry):[])++prevcarry)))
+          
+
 
 addIntF :: Int -> [Node a1] -> Int -> [Node a1] -> (Int, (Node a1, [Node a1]))
 addIntF m1 [n1] m2 [n2] = if (m1==1) then 
@@ -67,28 +88,6 @@ addIntF m1 (n1:n1s) m2 (n2:n2s) =
                                          (len+1,((carry && n1),((Gate XOR n1 carry):[])++remsum))
           (False,False,False,True)    -> let (len,(carry,remsum)) = addIntF m1 (n1:n1s) (m2-1) n2s in
                                          (len+1,((carry && n2),((Gate XOR n2 carry):[])++remsum)) 
-addInt [n1] [n2] =
-       let xsum = Gate XOR n1 n2
-           asum = (n1 && n2) in
-       (asum:xsum:[])
-addInt (n1:n1s) (n2:n2s) = 
-             if (length n1s) == (length n2s)
-             then let xsum = Gate XOR n1 n2
-                      asum = (n1 && n2)
-                      retlist = (addInt n1s n2s) in
-                         let x = head(retlist) 
-                             xs = tail (retlist) in
-                             (((asum || (xsum && x)):(Gate XOR xsum x):[])++xs) 
-             else if (length n1s) < (length n2s) 
-                  then let retlist = addInt (n1:n1s) n2s in
-                           let x = head(retlist)
-                               xs = tail (retlist) in 
-                               (((n2 && x):(Gate XOR n2 x):[])++xs) 
-                  else let retlist = addInt n1s (n2:n2s) in
-                           let x = head(retlist) 
-                               xs = tail (retlist) in
-                               (((n1 && x):(Gate XOR n1 x):[])++xs)
-
 numCmp :: SecureFunction a
 numCmp as bs = [imp as bs]
     where
@@ -106,12 +105,24 @@ numEq :: SecureFunction a
 numEq n1 n2 = [foldl1 (&&) (zipWith bij n1 n2)]
 
 hammingDist :: SecureFunction a
-hammingDist n1 n2 = let (len,total) = hammingDistF n1 n2 in total
+hammingDist n1 n2 = let difference = xor n1 n2 in
+                        let (len,distance) = hammingWeight 64 difference in
+                            distance
 
-hammingDistF [n1] [n2] = (1,lbij n1 n2)
-hammingDistF (n1:n1s) (n2:n2s) = let (len,subtotal) = hammingDistF n1s n2s in
-                                     let (leng,(carry,remsum)) = addIntF len subtotal 1 (lbij n1 n2) in
-                                         (leng,(carry:[])++remsum)
+
+hammingWeight :: Int -> [Node a1] -> (Int, [Node a1])
+hammingWeight p n = 
+    case (p>1) of
+         (True)     ->    let (leftHalf,rightHalf) = splitAt (quot p 2) n in
+                               let (lenleft,subleft) = hammingWeight (quot p 2) leftHalf
+                                   (lenright,subright) = hammingWeight (quot p 2) rightHalf in
+                                    let (len,(carry,subTotal)) = addIntFP 8 lenleft subleft lenright subright in
+                                          (len+1,((carry:[])++subTotal))
+         (False)    ->    (1,n)
+
+--(len,subtotal) = hammingDistF n1s n2s in
+--                                   let (leng,(carry,remsum)) = addIntFP 5 len subtotal 1 (lbij n1 n2) in
+--                                         (leng+1,(carry:[])++remsum)
 
 --hammingDist n1 n2 = [foldl1 addInt (zipWith lbij  n1 n2)]
 
