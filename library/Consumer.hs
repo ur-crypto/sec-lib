@@ -6,20 +6,34 @@ import Network.Socket
 import Data.Bits
 import qualified Network.Socket.ByteString as SBS
 import qualified Data.ByteString as B
+import qualified Data.Vector.Unboxed.Mutable as VM
 
 type CKey = Node Key
 type CTT = TruthTable Key
 
 processGates :: Socket -> [CKey] -> IO [CKey]
-processGates soc gates = mapM processGate gates
+processGates soc gates = do
+    gateTypes <- VM.new 6 
+    vals <- mapM (processGate gateTypes) gates
+    _ <- mapM (printGates gateTypes) [0 .. 5]
+    return vals
     where
-    processGate :: CKey -> IO CKey
-    processGate (Gate _ k1 k2) = do
-        a <- processGate k1
-        b <- processGate k2
+    processGate :: VM.IOVector Int -> CKey -> IO CKey
+    processGate vec (Gate ty k1 k2) = do
+        case ty of
+            AND     -> VM.modify vec (\x -> x+1) 0 
+            OR      -> VM.modify vec (\x -> x+1) 1 
+            XOR     -> VM.modify vec (\x -> x+1) 2 
+            NAND    -> VM.modify vec (\x -> x+1) 3 
+            BIJ     -> VM.modify vec (\x -> x+1) 4 
+        a <- processGate vec k1
+        b <- processGate vec k2
         tt <- getTT
         return $ processTT tt a b
-    processGate x = return x
+    processGate vec (Not a) = do
+        VM.modify vec (\x -> x+1) 5
+        return a
+    processGate _ x = return x
     processTT :: CTT -> CKey -> CKey -> CKey
     processTT (TruthTable a b c d) (Input k1) (Input k2) =
         let (Just k) = head $ filter corrKey $ map decOutKey keyList in
@@ -37,6 +51,11 @@ processGates soc gates = mapM processGate gates
         let (x2, r2) = B.splitAt cipherSize r1
         let (x3, x4) = B.splitAt cipherSize r2
         return $ TruthTable x1 x2 x3 x4
+    printGates vec i = do
+        let ty = if | i == 0 -> "AND: " | i == 1 -> "OR: " | i == 2 -> "XOR: "
+                    | i == 3 -> "NAND: " | i == 4 -> "BIJ: " | i == 5 -> "NOT: "
+        num <- VM.read vec i
+        putStrLn (ty ++ (show num))
 
 getSocket :: IO Socket
 getSocket = do

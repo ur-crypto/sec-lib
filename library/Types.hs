@@ -21,6 +21,7 @@ data GateType   = AND
                 | BIJ deriving(P.Show)
 
 data Node a    = Gate GateType (Node a) (Node a)
+                | Not (Node a)
                 | Constant P.Bool
                 | Input a deriving(P.Show)
 

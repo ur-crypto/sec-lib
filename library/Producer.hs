@@ -37,6 +37,9 @@ processGates soc gates = mapM processGate gates
         sendInfo (TruthTable r1 r2 r3 r4) = do
             let outkeys = map encOutKey [r1, r2, r3, r4]
             SBS.sendMany soc outkeys
+    processGate (Not node) = do
+        (Input (k1, k2)) <- processGate node
+        return (Input (k2, k1))
     processGate x = return x
 
 getSocket :: IO Socket
