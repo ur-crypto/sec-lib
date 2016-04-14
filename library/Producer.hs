@@ -10,14 +10,15 @@ import Control.Concurrent
 type PKey = Node (Key, Key)
 type PTT = TruthTable (Key, Key, Key)
 
-processGates :: Socket -> [PKey] -> IO [PKey]
-processGates soc gates = mapM processGate gates
+processGates :: Socket -> Key -> [PKey] -> IO [PKey]
+processGates soc rkey gates = do
+    mapM processGate gates
     where
     processGate :: PKey -> IO PKey
     processGate (Gate t k1 k2) = do
         a <- processGate k1
         b <- processGate k2
-        ok <- genKeyPair
+        ok <- genKeyPair rkey
         let o = (Input ok)
         let tt = getTT t o a b
         sendInfo tt
@@ -65,11 +66,12 @@ sendList _ _ _ = return $ error "Unbalanced send list"
 doWithSocket :: FiniteBits a => Socket -> (a, a) -> SecureFunction (Key, Key) -> IO [Bool]
 doWithSocket soc (inputProduce, inputConsume) test =  do
     let l = [1..((finiteBitSize inputProduce) + (finiteBitSize inputConsume))]
-    keyList <- mapM (const genKeyPair) l
+    rkey <- genRootKey
+    keyList <- mapM (const (genKeyPair rkey)) l
     let (ourList, theirList) = splitAt (finiteBitSize inputProduce) (map Input keyList)
     let bothList = (bitsToBools inputProduce) ++ (bitsToBools inputConsume)
     sendList soc keyList bothList
-    nodes <- Producer.processGates soc $ test ourList theirList
+    nodes <- Producer.processGates soc rkey $ test ourList theirList
     sendOutputs nodes
     where
     sendOutputs :: [PKey] -> IO [Bool]

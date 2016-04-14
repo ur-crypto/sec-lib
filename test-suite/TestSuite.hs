@@ -39,7 +39,7 @@ spec (csoc, psoc)=  do
 
     it "Num XOR 64 True" $ listTest (O.xor) (15 :: Int64) (20 :: Int64) ((xor) (15 :: Int64) (20 :: Int64))
 
-    it "Num Cmp 8 All" $ exhaustiveTest (O.xor) (xor)
+    -- it "Num Cmp 8 All" $ exhaustiveTest (O.xor) (xor)
     it "Sockets Close" $ do
         close csoc
         close psoc

@@ -29,10 +29,15 @@ zeros = BS.pack $ map (\_ -> 0 :: Word8) [1 .. padLength]
 zeroBuilder :: D.Builder
 zeroBuilder = D.byteString zeros
 
-genKeyPair :: IO (BS.ByteString, BS.ByteString)
-genKeyPair = withOpenSSL $ do
+genRootKey :: IO BS.ByteString
+genRootKey = do
+    k <- randBytes keyLength
+    return k
+
+genKeyPair :: BS.ByteString -> IO (BS.ByteString, BS.ByteString)
+genKeyPair rkey = withOpenSSL $ do
     k1 <- randBytes keyLength
-    k2 <- randBytes keyLength
+    let k2 = BS.pack $ BS.zipWith (xor) k1 rkey
     let k1Builder = mappend (D.byteString k1) zeroBuilder
     let k2Builder = mappend (D.byteString k2) zeroBuilder
 
