@@ -15,14 +15,30 @@ processGates soc rkey gates = do
     mapM processGate gates
     where
     processGate :: PKey -> IO PKey
-    processGate (Gate t k1 k2) = do
-        a <- processGate k1
-        b <- processGate k2
-        ok <- genKeyPair rkey
-        let o = (Input ok)
-        let tt = getTT t o a b
-        sendInfo tt
-        return o
+    processGate (Gate ty k1 k2) = do
+        
+        x <- processGate k1
+        y <- processGate k2
+        ret <- case (x, y) of
+            ((Input a), (Input b)) -> do
+                ok <- genKeyPair rkey
+                let o = (Input ok)
+                let tt = getTT ty o (Input a) (Input b)
+                sendInfo tt
+                return o
+            ((Input a), (Constant b)) ->
+                processConstant ty a b
+            ((Constant a), (Input b)) ->
+                processConstant ty b a
+            ((Constant a), (Constant b)) ->
+                return $ case ty of
+                    AND -> Constant (a && b)
+                    OR -> Constant (a || b)
+                    XOR -> Constant (xor a b)
+                    NAND -> Constant (not (a && b))
+                    BIJ -> Constant (not (xor a b))
+            (_, _) -> error "process gate returning wrong value"
+        return ret
         where
         getTT AND (Input (o0, o1)) = helper o0 o0 o0 o1
         getTT OR (Input (o0, o1)) = helper o0 o1 o1 o1
@@ -38,6 +54,17 @@ processGates soc rkey gates = do
         sendInfo (TruthTable r1 r2 r3 r4) = do
             let outkeys = map encOutKey [r1, r2, r3, r4]
             SBS.sendMany soc outkeys
+        processConstant :: GateType -> (Key, Key) -> Bool -> IO PKey
+        processConstant AND _ False = return $ Constant False
+        processConstant AND key True = return $ Input key
+        processConstant OR key False = return $ Input key
+        processConstant OR _ True = return $ Constant True
+        processConstant XOR key False = return $ Input key
+        processConstant XOR key True = processGate (Not (Input key))
+        processConstant NAND _ False = return $ Constant True
+        processConstant NAND key True = return $ Input key
+        processConstant BIJ key False = processGate (Not (Input key))
+        processConstant BIJ key True = return $ Input key
     processGate (Not node) = do
         (Input (k1, k2)) <- processGate node
         return (Input (k2, k1))
@@ -87,6 +114,7 @@ doWithSocket soc (inputProduce, inputConsume) test =  do
                 | ans == k0 -> False
                 | ans == k1 -> True
                 | otherwise -> error "Incorrect answer found"
+        sendNodes (Constant k) = return k
         sendNodes _ =  error "Should not be sending raw values"
 
 doWithoutSocket :: FiniteBits a => (a, a) -> SecureFunction (Key, Key) -> IO [Bool]

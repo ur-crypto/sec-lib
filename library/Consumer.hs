@@ -20,20 +20,47 @@ processGates soc gates = do
     where
     processGate :: VM.IOVector Int -> CKey -> IO CKey
     processGate vec (Gate ty k1 k2) = do
-        case ty of
-            AND     -> VM.modify vec (\x -> x+1) 0 
-            OR      -> VM.modify vec (\x -> x+1) 1 
-            XOR     -> VM.modify vec (\x -> x+1) 2 
-            NAND    -> VM.modify vec (\x -> x+1) 3 
-            BIJ     -> VM.modify vec (\x -> x+1) 4 
-        a <- processGate vec k1
-        b <- processGate vec k2
-        tt <- getTT
-        return $ processTT tt a b
+        x <- processGate vec k1
+        y <- processGate vec k2
+        ret <- case (x, y) of
+            ((Input a), (Input b)) -> do
+                countType vec ty
+                tt <- getTT
+                return $ processTT tt (Input a) (Input b)
+            ((Input a), (Constant b)) ->
+                processConstant vec ty a b
+            ((Constant a), (Input b)) ->
+                processConstant vec ty b a
+            ((Constant a), (Constant b)) ->
+                return $ case ty of
+                    AND -> Constant (a && b)
+                    OR -> Constant (a || b)
+                    XOR -> Constant (xor a b)
+                    NAND -> Constant (not (a && b))
+                    BIJ -> Constant (not (xor a b))
+            (_, _) -> error "process gate returning wrong value"
+        return ret
     processGate vec (Not a) = do
         VM.modify vec (\x -> x+1) 5
         return a
     processGate _ x = return x
+    countType vec ty = case ty of
+                    AND     -> VM.modify vec (\x -> x+1) 0 
+                    OR      -> VM.modify vec (\x -> x+1) 1 
+                    XOR     -> VM.modify vec (\x -> x+1) 2 
+                    NAND    -> VM.modify vec (\x -> x+1) 3 
+                    BIJ     -> VM.modify vec (\x -> x+1) 4 
+    processConstant :: VM.IOVector Int -> GateType -> Key -> Bool -> IO CKey
+    processConstant _ AND _ False = return $ Constant False
+    processConstant _ AND key True = return $ Input key
+    processConstant _ OR key False = return $ Input key
+    processConstant _ OR _ True = return $ Constant True
+    processConstant _ XOR key False = return $ Input key
+    processConstant vec XOR key True = processGate vec (Not (Input key))
+    processConstant _ NAND _ False = return $ Constant True
+    processConstant _ NAND key True = return $ Input key
+    processConstant vec BIJ key False = processGate vec (Not (Input key))
+    processConstant _ BIJ key True = return $ Input key
     processTT :: CTT -> CKey -> CKey -> CKey
     processTT (TruthTable a b c d) (Input k1) (Input k2) =
         let (Just k) = head $ filter corrKey $ map decOutKey keyList in
@@ -90,7 +117,8 @@ doWithSocket soc (produceInput, consumeInput) test = do
                 | k == o0 -> False
                 | k == o1 -> True
                 | otherwise -> error "Incorrect answer found"
-        receiveNodes _ =  error "Don't pass completed list"
+        receiveNodes (Constant k) = return k
+        receiveNodes _ = error "Don't pass completed list"
 
 doWithoutSocket ::FiniteBits a => (a, a) -> SecureFunction Key -> IO [Bool]
 doWithoutSocket input test = do

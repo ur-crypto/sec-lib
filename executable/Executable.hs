@@ -32,7 +32,7 @@ doArgs (Just Both) = do
     hpsoc <- async P.getSocket
     csoc <- wait hcsoc
     psoc <- wait hpsoc
-    printTest (csoc, psoc) (1 :: Int64, 1 :: Int64) hammingDist
+    printTest (csoc, psoc) (3 :: Int8, 7 :: Int8) andShift
 doArgs Nothing = usage
 
 main :: IO()

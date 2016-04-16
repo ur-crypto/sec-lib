@@ -30,7 +30,8 @@ test64 = 395648674974903
 testb8 :: Int8
 testb8 = 12
 
-
+andShift :: SecureFunction a
+andShift xs ys = (shiftL 1 xs) .&. ys
 
 addIntFP :: Int -> Int -> [Node a1] -> Int -> [Node a1] -> (Int, (Node a1, [Node a1]))
 addIntFP p m1 [n1] m2 [n2] = (1,(n1 && n2,((Gate XOR n1 n2):[])))

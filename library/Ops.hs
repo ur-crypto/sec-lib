@@ -24,6 +24,13 @@ xor xs ys = P.zipWith b_xor xs ys
 complement :: [Node a] -> [Node a]
 complement xs = xor xs xs
 
+--Bit Const macros
+shiftL :: P.Int -> [Node a] -> [Node a]
+shiftL num xs = (P.drop num xs) P.++ P.map (P.const P.$ Constant P.False) [0 .. num]
+rotate :: P.Int -> [Node a] -> [Node a]
+rotate _ [] = []
+rotate n xs = P.zipWith P.const (P.drop n (P.cycle xs)) xs
+
 --If Then Else Macro
 ifThenElse :: Node a -> Node a -> Node a -> Node a
 ifThenElse bool tb fb = 
