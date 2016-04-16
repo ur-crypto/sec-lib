@@ -77,3 +77,7 @@ bsToBools bs = concatMap bitsToBools $ BS.unpack bs
 numBytes :: FiniteBits a => a -> Int
 numBytes n = (finiteBitSize n) `quot` 8
 
+(==.) :: FiniteBits a => a -> a -> a
+(==.) a b = if a == b
+                then bit 1
+                else zeroBits

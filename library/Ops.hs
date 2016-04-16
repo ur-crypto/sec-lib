@@ -24,6 +24,22 @@ xor xs ys = P.zipWith b_xor xs ys
 complement :: [Node a] -> [Node a]
 complement xs = xor xs xs
 
+(<.) :: SecureFunction a
+(<.) as bs = [imp as bs]
+    where
+    imp :: [Node a] -> [Node a] -> Node a
+    imp [n1] [n2] = 
+           let nbool = Gate NAND n2 n2 in
+           n1 && nbool
+    imp (n1:n1s) (n2:n2s) =
+           let nbool = Gate NAND n2 n2 
+               mbool = Gate NAND n1 n1 in
+           ifThenElse ( n1 && nbool) n1 (ifThenElse (mbool && n2) n1 (imp n1s n2s))
+    imp _ _ = P.error "Bad args for imp"
+
+(==.) :: SecureFunction a
+(==.) n1 n2 = [P.foldl1 (&&) (P.zipWith bij n1 n2)]
+
 --Bit Const macros
 shiftL :: P.Int -> [Node a] -> [Node a]
 shiftL num xs = (P.drop num xs) P.++ P.map (P.const P.$ Constant P.False) [0 .. num]
