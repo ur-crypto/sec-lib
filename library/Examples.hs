@@ -30,8 +30,12 @@ test64 = 395648674974903
 testb8 :: Int8
 testb8 = 12
 
+
 andShift :: SecureFunction a
 andShift xs ys = (shiftL 1 xs) .&. ys
+
+addInt m n = let (len,(carry,subTotal)) =  addIntFP 32 32 m 32 n in 
+                 subTotal
 
 addIntFP :: Int -> Int -> [Node a1] -> Int -> [Node a1] -> (Int, (Node a1, [Node a1]))
 addIntFP p m1 [n1] m2 [n2] = (1,(n1 && n2,((Gate XOR n1 n2):[])))
@@ -91,10 +95,43 @@ hammingWeight p n =
                                           (len+1,((carry:[])++subTotal))
          (False)    ->    (1,n)
 
---(len,subtotal) = hammingDistF n1s n2s in
---                                   let (leng,(carry,remsum)) = addIntFP 5 len subtotal 1 (lbij n1 n2) in
---                                         (leng+1,(carry:[])++remsum)
+ueand (n1:n1s) [] = let rem = ueand n1s [] in
+                              (((Constant False):[])++rem)
+ueand [] (n1:n1s) = let rem = ueand n1s [] in
+                              (((Constant False):[])++rem) 
+ueand [] [n1] = (Constant False):[]
+ueand [n1] [] = (Constant False):[]
+ueand [] [] = []
+ueand [n1] [n2] = (n1 && n2):[]
+ueand (n1:n1s) (n2:n2s) = let rem = ueand n1s n2s in
+                              (((n1 && n2):[])++rem)
 
---hammingDist n1 n2 = [foldl1 addInt (zipWith lbij  n1 n2)]
+ureand n1 n2 = reverse (ueand (reverse n1) (reverse n2))
+urexor n1 n2 = reverse (uexor (reverse n1) (reverse n2))
+
+uexor (n1:n1s) [] = (n1:n1s)
+uexor [] (n1:n1s) = (n1:n1s) 
+uexor [] [n1] = n1:[]
+uexor [n1] [] = n1:[]
+uexor [n1] [n2] = (b_xor n1 n2):[]
+uexor (n1:n1s) (n2:n2s) = let rem = uexor n1s n2s in
+                              (((b_xor n1 n2):[])++rem)
+
+hammingWt :: Int -> [Node a1] -> (Int, [Node a1])
+hammingWt p n =
+    case (p>2,p>1) of
+         (True,_)        -> let (leftThird,rightHalf) = splitAt (quot p 3) n in
+                             let (midThird,rightThird) = splitAt (quot p 3) rightHalf in
+                                  let (lenleft,subleft) = hammingWt (quot p 3) leftThird
+                                      (lenmid,submid) = hammingWt (quot p 3) midThird
+                                      (lenright,subright) = hammingWt (p-2*(quot p 3)) rightThird in
+                                      let fsummand = (urexor) ((urexor) subleft submid) subright 
+                                          ssummand = (urexor) ((urexor) (ureand subleft submid) (ureand submid  subright)) (ureand subleft subright) 
+                                          mx = maximum((lenleft:lenright:lenmid:[])) in
+                                          let (len,(carry,subTotal)) = addIntFP 8 mx fsummand mx ssummand in
+                                              (len+1,((carry:[])++subTotal))
+         (False,True)    -> let (fb:[sb]) = n in (2,((fb && sb):((b_xor) fb sb):[])) 
+         (False,False)   -> (1,n)
+
 
 
