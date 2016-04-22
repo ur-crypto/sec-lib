@@ -51,10 +51,10 @@ addIntFP p m1 (n1:n1s) m2 (n2:n2s) =
           (False,False,False,False)   -> let generate = (n1:n1s) .&. (n2:n2s)
                                              propogate = xor (n1:n1s) (n2:n2s) in
                                              subCompute propogate generate  
-          (False,False,True,_)        -> let (len,(carry,remsum)) = addIntFP p (m1-1) n1s m2 (n2:n2s) in
-                                         (len+1,((carry && n1),((Gate XOR n1 carry):[])++remsum))
-          (False,False,False,True)    -> let (len,(carry,remsum)) = addIntFP p m1 (n1:n1s) (m2-1) n2s in
-                                         (len+1,((carry && n2),((Gate XOR n2 carry):[])++remsum)) 
+          (False,False,True,_)        -> let (len,(carry,resltsum)) = addIntFP p (m1-1) n1s m2 (n2:n2s) in
+                                         (len+1,((carry && n1),((Gate XOR n1 carry):[])++resltsum))
+          (False,False,False,True)    -> let (len,(carry,resltsum)) = addIntFP p m1 (n1:n1s) (m2-1) n2s in
+                                         (len+1,((carry && n2),((Gate XOR n2 carry):[])++resltsum)) 
 
 subCompute [p1] [g1]  = (1,(g1,p1:[]))
 subCompute (p1:p1s) (g1:g1s) =
@@ -81,7 +81,7 @@ numEq n1 n2 = [foldl1 (&&) (zipWith bij n1 n2)]
 
 hammingDist :: SecureFunction a
 hammingDist n1 n2 = let difference = xor n1 n2 in
-                        let (len,distance) = hammingWeight 64 difference in
+                        let (len,distance) = hammingWt 64  difference in
                             distance
 
 
@@ -95,16 +95,16 @@ hammingWeight p n =
                                           (len+1,((carry:[])++subTotal))
          (False)    ->    (1,n)
 
-ueand (n1:n1s) [] = let rem = ueand n1s [] in
-                              (((Constant False):[])++rem)
-ueand [] (n1:n1s) = let rem = ueand n1s [] in
-                              (((Constant False):[])++rem) 
+ueand (n1:n1s) [] = let reslt = ueand n1s [] in
+                              (((Constant False):[])++reslt)
+ueand [] (n1:n1s) = let reslt = ueand n1s [] in
+                              (((Constant False):[])++reslt) 
 ueand [] [n1] = (Constant False):[]
 ueand [n1] [] = (Constant False):[]
 ueand [] [] = []
 ueand [n1] [n2] = (n1 && n2):[]
-ueand (n1:n1s) (n2:n2s) = let rem = ueand n1s n2s in
-                              (((n1 && n2):[])++rem)
+ueand (n1:n1s) (n2:n2s) = let reslt = ueand n1s n2s in
+                              (((n1 && n2):[])++reslt)
 
 ureand n1 n2 = reverse (ueand (reverse n1) (reverse n2))
 urexor n1 n2 = reverse (uexor (reverse n1) (reverse n2))
@@ -114,8 +114,8 @@ uexor [] (n1:n1s) = (n1:n1s)
 uexor [] [n1] = n1:[]
 uexor [n1] [] = n1:[]
 uexor [n1] [n2] = (b_xor n1 n2):[]
-uexor (n1:n1s) (n2:n2s) = let rem = uexor n1s n2s in
-                              (((b_xor n1 n2):[])++rem)
+uexor (n1:n1s) (n2:n2s) = let reslt = uexor n1s n2s in
+                              (((b_xor n1 n2):[])++reslt)
 
 hammingWt :: Int -> [Node a1] -> (Int, [Node a1])
 hammingWt p n =
@@ -126,9 +126,9 @@ hammingWt p n =
                                       (lenmid,submid) = hammingWt (quot p 3) midThird
                                       (lenright,subright) = hammingWt (p-2*(quot p 3)) rightThird in
                                       let fsummand = (urexor) ((urexor) subleft submid) subright 
-                                          ssummand = (urexor) ((urexor) (ureand subleft submid) (ureand submid  subright)) (ureand subleft subright) 
+                                          ssummand = ((urexor) ((urexor) (ureand subleft submid) (ureand submid  subright)) (ureand subleft subright))++((Constant False):[])
                                           mx = maximum((lenleft:lenright:lenmid:[])) in
-                                          let (len,(carry,subTotal)) = addIntFP 8 mx fsummand mx ssummand in
+                                          let (len,(carry,subTotal)) = addIntFP 8 mx fsummand (mx+1) ssummand in
                                               (len+1,((carry:[])++subTotal))
          (False,True)    -> let (fb:[sb]) = n in (2,((fb && sb):((b_xor) fb sb):[])) 
          (False,False)   -> (1,n)

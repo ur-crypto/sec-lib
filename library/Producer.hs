@@ -73,7 +73,7 @@ processGates soc rkey gates = do
 getSocket :: IO Socket
 getSocket = do
     threadDelay 1000 --for testing purposes, makes it more likely other thread will be accepting
-    addrinfos <- getAddrInfo Nothing (Just "127.0.0.1") (Just "3000")
+    addrinfos <- getAddrInfo Nothing (Just "128.151.67.80") (Just "3000")
     let serveraddr = head addrinfos
     soc <- socket (addrFamily serveraddr) Stream defaultProtocol
     setSocketOption soc ReuseAddr 1
