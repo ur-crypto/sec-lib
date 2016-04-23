@@ -7,35 +7,28 @@ import Examples
 import TestUtils
 import System.Environment
 import Data.Int
-    
-data Mode = Producer | Consumer | Both
 
 usage :: IO()
 usage = putStrLn "Enter producer or consumer"
 
-parseArgs :: [String] -> Maybe Mode
-parseArgs ("producer":_) = Just Producer
-parseArgs ("consumer":_) = Just Consumer
-parseArgs ("both":_) = Just Both
-parseArgs [] = Nothing
-parseArgs _ = Nothing
-
-doArgs :: Maybe Mode -> IO()
-doArgs (Just Producer) = do 
+doArgs :: [String] -> IO()
+doArgs ("producer":_) = do 
     res <- P.doWithoutSocket (test64, testb64) hammingDist 
     print res
-doArgs (Just Consumer) = do 
+doArgs ("consumer":_) = do 
     res <- C.doWithoutSocket (test64, testb64) hammingDist
     print res
-doArgs (Just Both) = do
+doArgs ("both":teststr) = do
     hcsoc <- async C.getSocket
     hpsoc <- async P.getSocket
     csoc <- wait hcsoc
     psoc <- wait hpsoc
-    printTest (csoc, psoc) (3 :: Int8, 7 :: Int8) andShift
-doArgs Nothing = usage
+    let test = case teststr of ("shift":_) -> andShift
+                               ("eq":_) -> (==.)
+    printTest (csoc, psoc) (3 :: Int64, 7 :: Int64) test
+doArgs _ = usage
 
 main :: IO()
 main = do
     args <- getArgs
-    doArgs $ parseArgs args
+    doArgs args
