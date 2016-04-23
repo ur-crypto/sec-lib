@@ -16,4 +16,5 @@ cabal.sandbox.config
 .stack-work/
 *.swp
 *.nfs*
+profs
 
