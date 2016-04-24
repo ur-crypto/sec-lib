@@ -16,7 +16,7 @@ processGates soc fkeystr gates = do
     gateTypes <- VM.new 6 
     let fkey = initFixedKey fkeystr
     vals <- mapM (processGate fkey gateTypes) gates
-    _ <- mapM (printGates gateTypes) [0 .. 5]
+    --_ <- mapM (printGates gateTypes) [0 .. 5]
     return vals
     where
     processGate :: FixedKey -> VM.IOVector Int -> CKey -> IO CKey

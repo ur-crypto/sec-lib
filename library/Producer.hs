@@ -25,7 +25,7 @@ processGates soc rkey fkeystr gates = do
                 ok <- genKeyPair rkey
                 let o = (Input ok)
                 let tt = getTT ty o (Input a) (Input b)
-                sendInfo fkey tt
+                sendInfo tt
                 return o
             ((Input a), (Constant b)) ->
                 processConstant ty a b
@@ -51,10 +51,12 @@ processGates soc rkey fkeystr gates = do
         helper o1 o2 o3 o4 (Input (a0, a1)) (Input (b0, b1))=
             TruthTable (a0, b0, o1) (a0, b1, o2) (a1, b0, o3) (a1, b1, o4)
         helper _ _ _ _ _ _ = error "Should only pass values"
-        sendInfo :: FixedKey -> PTT -> IO()
-        sendInfo fkey (TruthTable r1 r2 r3 r4) = do
+
+        sendInfo :: PTT -> IO()
+        sendInfo (TruthTable r1 r2 r3 r4) = do
             let outkeys = map (encOutKey fkey) [r1, r2, r3, r4]
             SBS.sendMany soc outkeys
+
         processConstant :: GateType -> (Key, Key) -> Bool -> IO PKey
         processConstant AND _ False = return $ Constant False
         processConstant AND key True = return $ Input key
@@ -66,6 +68,7 @@ processGates soc rkey fkeystr gates = do
         processConstant NAND key True = return $ Input key
         processConstant BIJ key False = processGate fkey (Not (Input key))
         processConstant BIJ key True = return $ Input key
+
     processGate fkey (Not node) = do
         (Input (k1, k2)) <- processGate fkey node
         return (Input (k2, k1))
@@ -73,8 +76,8 @@ processGates soc rkey fkeystr gates = do
 
 getSocket :: IO Socket
 getSocket = do
-    threadDelay 1000 --for testing purposes, makes it more likely other thread will be accepting
-    addrinfos <- getAddrInfo Nothing (Just "128.151.67.80") (Just "3000")
+    threadDelay 10000 --for testing purposes, makes it more likely other thread will be accepting
+    addrinfos <- getAddrInfo Nothing (Just "127.0.0.1") (Just "3000")
     let serveraddr = head addrinfos
     soc <- socket (addrFamily serveraddr) Stream defaultProtocol
     setSocketOption soc ReuseAddr 1
