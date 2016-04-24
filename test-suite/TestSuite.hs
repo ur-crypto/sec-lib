@@ -15,11 +15,15 @@ import Data.Bits
 
 main :: IO ()
 main = do
+    putStrLn "Attempting to get sockets"
     hcsoc <- async C.getSocket
     hpsoc <- async P.getSocket
+    putStrLn "Waiting on sockets"
     csoc <- wait hcsoc
     psoc <- wait hpsoc
+    putStrLn "Creating Tests"
     test <- testSpec "lazy-circuits" (spec (csoc, psoc))
+    putStrLn "Entering Test Suite"
     Test.Tasty.defaultMain test
 
 spec :: (Socket, Socket) -> Spec
@@ -31,9 +35,9 @@ spec (csoc, psoc)=  do
     it "Num Eq 32 False" $ boolTest numEq test32 (test32-1) False
     it "Num Eq 64 True" $ boolTest numEq test64 test64 True
     it "Num Eq 64 False" $ boolTest numEq test64 (test64-1) False
-    it "Num Cmp 64 True" $ boolTest numCmp test64 (test64-1) True
-    it "Num Cmp 64 False" $ boolTest numCmp test64 test64 False
-    it "Num Cmp 64 False" $ boolTest numCmp test64 (test64+1) False
+    it "Num Cmp 64 True" $ boolTest (numCmp) test64 (test64-1) True
+    it "Num Cmp 64 False" $ boolTest (numCmp) test64 test64 False
+    it "Num Cmp 64 False" $ boolTest (numCmp) test64 (test64+1) False
     it "Num XOR 64 True" $ listTest (O.xor) (15 :: Int64) (20 :: Int64) ((xor) (15 :: Int64) (20 :: Int64))
     it "Num Shift 64 True" $ listTest (andShift) (15 :: Int64) (20 :: Int64) ((.&.) (30 :: Int64) (20 :: Int64))
    -- it "Num Cmp 8 All" $ exhaustiveTest (O.==.) (==.)

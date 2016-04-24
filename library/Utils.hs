@@ -13,6 +13,9 @@ import Text.Bytedump
 
 
 -- In Bytes
+--
+
+type FixedKey = AES128
 
 cipherSize :: Int
 cipherSize = 16
@@ -29,6 +32,11 @@ zeros = BS.pack $ map (\_ -> 0 :: Word8) [1 .. padLength]
 zeroBuilder :: D.Builder
 zeroBuilder = D.byteString zeros
 
+genFixedKey :: IO BS.ByteString
+genFixedKey = do
+    k <- randBytes cipherSize
+    return k
+
 genRootKey :: IO BS.ByteString
 genRootKey = do
     k <- randBytes keyLength
@@ -38,23 +46,23 @@ genKeyPair :: BS.ByteString -> IO (BS.ByteString, BS.ByteString)
 genKeyPair rkey = withOpenSSL $ do
     k1 <- randBytes keyLength
     let k2 = BS.pack $ BS.zipWith (xor) k1 rkey
-    let k1Builder = mappend (D.byteString k1) zeroBuilder
-    let k2Builder = mappend (D.byteString k2) zeroBuilder
-
-    return (L.toStrict . D.toLazyByteString $ k1Builder, L.toStrict . D.toLazyByteString $ k2Builder)
+    let k10 = BS.concat [k1, zeros]
+    let k20 = BS.concat [k2, zeros]
+    return (k10, k20)
     
 getAESKeys :: BS.ByteString -> BS.ByteString -> (AES128, AES128)
 getAESKeys a b = (throwCryptoError $ cipherInit a :: AES128, throwCryptoError $ cipherInit b :: AES128)
 
-encOutKey :: (BS.ByteString, BS.ByteString, BS.ByteString) -> BS.ByteString
-encOutKey (a, b, o) =
-    let (ac, bc) = getAESKeys a b in 
-    ecbEncrypt ac $ ecbEncrypt bc o
+initFixedKey :: BS.ByteString -> AES128
+initFixedKey str = throwCryptoError $ cipherInit str
 
-decOutKey :: (BS.ByteString, BS.ByteString, BS.ByteString) -> Maybe BS.ByteString
-decOutKey (a, b, o) = 
-    let (ac, bc) = getAESKeys a b in 
-    let check = ecbDecrypt bc $ ecbDecrypt ac o in
+encOutKey :: AES128 -> (BS.ByteString, BS.ByteString, BS.ByteString) -> BS.ByteString
+encOutKey fkey (a, b, o) = 
+    BS.pack $ BS.zipWith (xor) o . BS.pack $ BS.zipWith (xor) (ecbEncrypt fkey a) (ecbEncrypt fkey b)
+
+decOutKey :: AES128 -> (BS.ByteString, BS.ByteString, BS.ByteString) -> Maybe BS.ByteString
+decOutKey fkey ktup = 
+    let check = encOutKey fkey ktup in
     let (_, z) = BS.splitAt keyLength check in
     if z == zeros
         then Just check

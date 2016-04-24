@@ -10,15 +10,16 @@ import Control.Concurrent
 type PKey = Node (Key, Key)
 type PTT = TruthTable (Key, Key, Key)
 
-processGates :: Socket -> Key -> [PKey] -> IO [PKey]
-processGates soc rkey gates = do
-    mapM processGate gates
+processGates :: Socket -> Key -> Key -> [PKey] -> IO [PKey]
+processGates soc rkey fkeystr gates = do
+    let fkey = initFixedKey fkeystr
+    ret <- mapM (processGate fkey) gates
+    return ret
     where
-    processGate :: PKey -> IO PKey
-    processGate (Gate ty k1 k2) = do
-        
-        x <- processGate k1
-        y <- processGate k2
+    processGate :: FixedKey -> PKey -> IO PKey
+    processGate fkey (Gate ty k1 k2) = do
+        x <- processGate fkey k1
+        y <- processGate fkey k2
         ret <- case (x, y) of
             ((Input a), (Input b)) -> do
                 ok <- genKeyPair rkey
@@ -50,29 +51,32 @@ processGates soc rkey gates = do
         helper o1 o2 o3 o4 (Input (a0, a1)) (Input (b0, b1))=
             TruthTable (a0, b0, o1) (a0, b1, o2) (a1, b0, o3) (a1, b1, o4)
         helper _ _ _ _ _ _ = error "Should only pass values"
+
         sendInfo :: PTT -> IO()
         sendInfo (TruthTable r1 r2 r3 r4) = do
-            let outkeys = map encOutKey [r1, r2, r3, r4]
+            let outkeys = map (encOutKey fkey) [r1, r2, r3, r4]
             SBS.sendMany soc outkeys
+
         processConstant :: GateType -> (Key, Key) -> Bool -> IO PKey
         processConstant AND _ False = return $ Constant False
         processConstant AND key True = return $ Input key
         processConstant OR key False = return $ Input key
         processConstant OR _ True = return $ Constant True
         processConstant XOR key False = return $ Input key
-        processConstant XOR key True = processGate (Not (Input key))
+        processConstant XOR key True = processGate fkey (Not (Input key))
         processConstant NAND _ False = return $ Constant True
         processConstant NAND key True = return $ Input key
-        processConstant BIJ key False = processGate (Not (Input key))
+        processConstant BIJ key False = processGate fkey (Not (Input key))
         processConstant BIJ key True = return $ Input key
-    processGate (Not node) = do
-        (Input (k1, k2)) <- processGate node
+
+    processGate fkey (Not node) = do
+        (Input (k1, k2)) <- processGate fkey node
         return (Input (k2, k1))
-    processGate x = return x
+    processGate _ x = return x
 
 getSocket :: IO Socket
 getSocket = do
-    threadDelay 1000 --for testing purposes, makes it more likely other thread will be accepting
+    threadDelay 10000 --for testing purposes, makes it more likely other thread will be accepting
     addrinfos <- getAddrInfo Nothing (Just "127.0.0.1") (Just "3000")
     let serveraddr = head addrinfos
     soc <- socket (addrFamily serveraddr) Stream defaultProtocol
@@ -94,11 +98,13 @@ doWithSocket :: FiniteBits a => Socket -> (a, a) -> SecureFunction (Key, Key) ->
 doWithSocket soc (inputProduce, inputConsume) test =  do
     let l = [1..((finiteBitSize inputProduce) + (finiteBitSize inputConsume))]
     rkey <- genRootKey
+    fkeystr <- genFixedKey
+    SBS.sendAll soc fkeystr
     keyList <- mapM (const (genKeyPair rkey)) l
     let (ourList, theirList) = splitAt (finiteBitSize inputProduce) (map Input keyList)
     let bothList = (bitsToBools inputProduce) ++ (bitsToBools inputConsume)
     sendList soc keyList bothList
-    nodes <- Producer.processGates soc rkey $ test ourList theirList
+    nodes <- Producer.processGates soc rkey fkeystr $ test ourList theirList
     sendOutputs nodes
     where
     sendOutputs :: [PKey] -> IO [Bool]

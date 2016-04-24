@@ -7,35 +7,39 @@ import Examples
 import TestUtils
 import System.Environment
 import Data.Int
-    
-data Mode = Producer | Consumer | Both
 
 usage :: IO()
 usage = putStrLn "Enter producer or consumer"
 
-parseArgs :: [String] -> Maybe Mode
-parseArgs ("producer":_) = Just Producer
-parseArgs ("consumer":_) = Just Consumer
-parseArgs ("both":_) = Just Both
-parseArgs [] = Nothing
-parseArgs _ = Nothing
-
-doArgs :: Maybe Mode -> IO()
-doArgs (Just Producer) = do 
+doArgs :: [String] -> IO()
+doArgs ("producer":_) = do 
     res <- P.doWithoutSocket (test64, testb64) hammingDist 
     print res
-doArgs (Just Consumer) = do 
+doArgs ("consumer":_) = do 
     res <- C.doWithoutSocket (test64, testb64) hammingDist
     print res
-doArgs (Just Both) = do
+doArgs ("both":_) = do
     hcsoc <- async C.getSocket
     hpsoc <- async P.getSocket
     csoc <- wait hcsoc
     psoc <- wait hpsoc
-    printTest (csoc, psoc) (test32,testb32) addInt
-doArgs Nothing = usage
+    printTest (csoc, psoc) (1::Int8,4::Int8) (<.)
+    printTest (csoc, psoc) (2::Int8,4::Int8) (<.)
+    printTest (csoc, psoc) (3::Int8,4::Int8) (<.)
+    printTest (csoc, psoc) (4::Int8,4::Int8) (<.)
+    printTest (csoc, psoc) (5::Int8,4::Int8) (<.)
+    printTest (csoc, psoc) (6::Int8,4::Int8) (<.)
+    printTest (csoc, psoc) (7::Int8,4::Int8) (<.)
+    printTest (csoc, psoc) (8::Int8,4::Int8) (<.)
+    printTest (csoc, psoc) (test32,testb32) (<.)
+    printTest (csoc, psoc) (test32,test32) (<.)
+    printTest (csoc, psoc) (testb32,test32) (<.)
+    printTest (csoc, psoc) (test32, test32-1) (<.)
+    printTest (csoc, psoc) (test32, test32) (<.)
+    printTest (csoc, psoc) (test32, test32+1) (<.)
+doArgs _ = usage
 
 main :: IO()
 main = do
     args <- getArgs
-    doArgs $ parseArgs args
+    doArgs args
