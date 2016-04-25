@@ -67,7 +67,7 @@ numCmp :: SecureFunction a
 numCmp as bs = [imp as bs]
     where
     imp :: [Node a] -> [Node a] -> Node a
-    imp [] [] = Constant False
+    imp [] [] = Constant True 
     imp [n1] [n2] = 
            let nbool = Gate NAND n2 n2 in
            n1 && nbool
