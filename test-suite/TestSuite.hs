@@ -39,6 +39,8 @@ spec (csoc, psoc)=  do
     it "Num Cmp 64 False" $ boolTest (numCmp) test64 test64 False
     it "Num Cmp 64 False" $ boolTest (numCmp) test64 (test64+1) False
     it "Num XOR 64 True" $ listTest (O.xor) (15 :: Int64) (20 :: Int64) ((xor) (15 :: Int64) (20 :: Int64))
+    it "Num OR 64 True" $ listTest (O..|.) (15 :: Int64) (20 :: Int64) ((.|.) (15 :: Int64) (20 :: Int64))
+    it "Num nand 64 True" $ listTest (O..~&.) (15 :: Int64) (20 :: Int64) ((\x -> \y -> (complement (x .&. y))) (15 :: Int64) (20 :: Int64))
     it "Num Shift 64 True" $ listTest (andShift) (15 :: Int64) (20 :: Int64) ((.&.) (30 :: Int64) (20 :: Int64))
    -- it "Num Cmp 8 All" $ exhaustiveTest (O.==.) (==.)
     it "Sockets Close" $ do
@@ -51,7 +53,10 @@ spec (csoc, psoc)=  do
     boolTest test num1 num2 expect = (doTest (csoc, psoc) (num1, num2) test) `shouldReturn` [expect]
 
     listTest  :: FiniteBits b => (forall a. SecureFunction a) -> b -> b -> b -> Expectation
-    listTest test inputNum inputNum2 expectedNumber = (doTest (csoc, psoc) (inputNum, inputNum2) test) `shouldReturn` (bitsToBools expectedNumber)
+    listTest test inputNum inputNum2 expectedNumber = do 
+        ourAnswers <- (doTest (csoc, psoc) (inputNum, inputNum2) test) 
+        let expectAnswers = (bitsToBools expectedNumber)
+        ourAnswers `shouldBe` expectAnswers
     {-
     exhaustiveTest :: (forall a. SecureFunction a) -> (forall b. FiniteBits b => b -> b -> b) -> Expectation
     exhaustiveTest test equivalent = do

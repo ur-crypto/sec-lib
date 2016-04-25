@@ -54,7 +54,7 @@ processGates soc rkey fkeystr gates = do
 
         sendInfo :: PTT -> IO()
         sendInfo (TruthTable r1 r2 r3 r4) = do
-            let outkeys = map (encOutKey fkey) [r1, r2, r3, r4]
+            outkeys <- shuffle $ map (encOutKey fkey) [r1, r2, r3, r4]
             SBS.sendMany soc outkeys
 
         processConstant :: GateType -> (Key, Key) -> Bool -> IO PKey

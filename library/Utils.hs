@@ -10,7 +10,9 @@ import Crypto.Cipher.AES
 import Crypto.Cipher.Types
 import Crypto.Error
 import Text.Bytedump
-
+import System.Random
+import Data.Array.IO
+import Control.Monad
 
 -- In Bytes
 --
@@ -55,6 +57,20 @@ getAESKeys a b = (throwCryptoError $ cipherInit a :: AES128, throwCryptoError $ 
 
 initFixedKey :: BS.ByteString -> AES128
 initFixedKey str = throwCryptoError $ cipherInit str
+
+shuffle :: [a] -> IO [a]
+shuffle xs = do
+        ar <- newArray n xs
+        forM [1..n] $ \i -> do
+            j <- randomRIO (i,n)
+            vi <- readArray ar i
+            vj <- readArray ar j
+            writeArray ar j vi
+            return vj
+  where
+    n = length xs
+    newArray :: Int -> [a] -> IO (IOArray Int a)
+    newArray n xs =  newListArray (1,n) xs
 
 encOutKey :: AES128 -> (BS.ByteString, BS.ByteString, BS.ByteString) -> BS.ByteString
 encOutKey fkey (a, b, o) = 

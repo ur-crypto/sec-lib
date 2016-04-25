@@ -21,6 +21,8 @@ bij = Gate BIJ
 (.|.) xs ys = P.zipWith (||) xs ys
 xor :: SecureFunction a
 xor xs ys = P.zipWith b_xor xs ys
+(.~&.) :: SecureFunction a
+(.~&.) xs ys = P.zipWith (nand) xs ys
 complement :: [Node a] -> [Node a]
 complement xs = xor xs xs
 
