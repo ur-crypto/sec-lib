@@ -68,11 +68,11 @@ numCmp as bs = [imp as bs]
     where
     imp :: [Node a] -> [Node a] -> Node a
     imp [n1] [n2] = 
-           let nbool = Gate NAND n2 n2 in
+           let nbool = Not n2 in
            n1 && nbool
     imp (n1:n1s) (n2:n2s) =
-           let nbool = Gate NAND n2 n2 
-               mbool = Gate NAND n1 n1 in
+           let nbool = Not n2 
+               mbool = Not n1 in
            ifThenElse ( n1 && nbool) n1 (ifThenElse (mbool && n2) n1 (imp n1s n2s))
     imp _ _ = error "Bad args for imp"
 
@@ -91,7 +91,7 @@ hammingWeight p n =
          (True)     ->    let (leftHalf,rightHalf) = splitAt (quot p 2) n in
                                let (lenleft,subleft) = hammingWeight (quot p 2) leftHalf
                                    (lenright,subright) = hammingWeight (quot p 2) rightHalf in
-                                    let (len,(carry,subTotal)) = addIntFP 8 lenleft subleft lenright subright in
+                                    let (len,(carry,subTotal)) = addIntFP 6 lenleft subleft lenright subright in
                                           (len+1,((carry:[])++subTotal))
          (False)    ->    (1,n)
 
@@ -128,7 +128,7 @@ hammingWt p n =
                                       let fsummand = (urexor) ((urexor) subleft submid) subright 
                                           ssummand = ((urexor) ((urexor) (ureand subleft submid) (ureand submid  subright)) (ureand subleft subright))++((Constant False):[])
                                           mx = maximum((lenleft:lenright:lenmid:[])) in
-                                          let (len,(carry,subTotal)) = addIntFP 8 mx fsummand (mx+1) ssummand in
+                                          let (len,(carry,subTotal)) = addIntFP 6 mx fsummand (mx+1) ssummand in
                                               (len+1,((carry:[])++subTotal))
          (False,True)    -> let (fb:[sb]) = n in (2,((fb && sb):((b_xor) fb sb):[])) 
          (False,False)   -> (1,n)
