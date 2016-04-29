@@ -38,6 +38,7 @@ spec (csoc, psoc)=  do
     it "Num Cmp 64 True" $ boolTest (numCmp) test64 (test64-1) True
     it "Num Cmp 64 False" $ boolTest (numCmp) test64 test64 False
     it "Num Cmp 64 False" $ boolTest (numCmp) test64 (test64+1) False
+    it "Num hamDist 64 True" $ listTest (hammingDist) test64 testb64 (28 :: Int64)
     it "Num XOR 64 True" $ listTest (O.xor) (15 :: Int64) (20 :: Int64) ((xor) (15 :: Int64) (20 :: Int64))
     it "Num OR 64 True" $ listTest (O..|.) (15 :: Int64) (20 :: Int64) ((.|.) (15 :: Int64) (20 :: Int64))
     it "Num nand 64 True" $ listTest (O..~&.) (15 :: Int64) (20 :: Int64) ((\x -> \y -> (complement (x .&. y))) (15 :: Int64) (20 :: Int64))
