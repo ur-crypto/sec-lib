@@ -34,6 +34,7 @@ testb8 = 12
 andShift :: SecureFunction a
 andShift xs ys = (shiftL 1 xs) .&. ys
 
+addInt :: [Node a1] -> [Node a1] -> [Node a1]
 addInt m n = let (len,(carry,subTotal)) =  addIntFP 32 32 m 32 n in 
                  subTotal
 
@@ -55,11 +56,14 @@ addIntFP p m1 (n1:n1s) m2 (n2:n2s) =
                                          (len+1,((carry && n1),((Gate XOR n1 carry):[])++resltsum))
           (False,False,False,True)    -> let (len,(carry,resltsum)) = addIntFP p m1 (n1:n1s) (m2-1) n2s in
                                          (len+1,((carry && n2),((Gate XOR n2 carry):[])++resltsum)) 
+-- addIntFP _ _ _ _ _ = error "unbalanced inputs"
 
+subCompute :: [Node a] -> [Node a] -> (Int, (Node a, [Node a]))
 subCompute [p1] [g1]  = (1,(g1,p1:[]))
 subCompute (p1:p1s) (g1:g1s) =
       let (len,(carry,prevcarry)) = subCompute p1s g1s in
           (len+1,((Gate XOR g1 (carry && p1)),(((Gate XOR p1 carry):[])++prevcarry)))
+-- subCompute _ _ = error "unbalanced inputs"
           
 
 
@@ -95,24 +99,29 @@ hammingWeight p n =
                                           (len+1,((carry:[])++subTotal))
          (False)    ->    (1,n)
 
+ueand :: [Node a] -> [Node a] -> [Node a]
 ueand (n1:n1s) [] = let reslt = ueand n1s [] in
                               (((Constant False):[])++reslt)
 ueand [] (n1:n1s) = let reslt = ueand n1s [] in
                               (((Constant False):[])++reslt) 
-ueand [] [n1] = (Constant False):[]
-ueand [n1] [] = (Constant False):[]
+--ueand [] [n1] = (Constant False):[]
+--ueand [n1] [] = (Constant False):[]
 ueand [] [] = []
 ueand [n1] [n2] = (n1 && n2):[]
 ueand (n1:n1s) (n2:n2s) = let reslt = ueand n1s n2s in
                               (((n1 && n2):[])++reslt)
 
+urexor :: [Node a] -> [Node a] -> [Node a]
+ureand :: [Node a] -> [Node a] -> [Node a]
 ureand n1 n2 = reverse (ueand (reverse n1) (reverse n2))
 urexor n1 n2 = reverse (uexor (reverse n1) (reverse n2))
 
+uexor :: [Node a] -> [Node a] -> [Node a]
 uexor (n1:n1s) [] = (n1:n1s)
 uexor [] (n1:n1s) = (n1:n1s) 
-uexor [] [n1] = n1:[]
-uexor [n1] [] = n1:[]
+--uexor [] [n1] = n1:[]
+--uexor [n1] [] = n1:[]
+uexor [] [] = []
 uexor [n1] [n2] = (b_xor n1 n2):[]
 uexor (n1:n1s) (n2:n2s) = let reslt = uexor n1s n2s in
                               (((b_xor n1 n2):[])++reslt)
