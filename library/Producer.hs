@@ -4,6 +4,7 @@ import Utils
 import Types
 import Network.Socket
 import qualified Network.Socket.ByteString as SBS
+import qualified Data.ByteString as BS
 import Data.Bits
 import Control.Concurrent
 
@@ -17,16 +18,20 @@ processGates soc rkey fkeystr gates = do
     return ret
     where
     processGate :: FixedKey -> PKey -> IO PKey
+    processGate fkey (Gate XOR (Input (a0,a1)) (Input (b0,b1))) =
+        let o1 = BS.pack $ BS.zipWith (xor) a0 b0 
+            o2 = BS.pack $ BS.zipWith (xor) a0 b1 in
+        return (Input (o1, o2))
     processGate fkey (Gate ty k1 k2) = do
         x <- processGate fkey k1
         y <- processGate fkey k2
         ret <- case (x, y) of
             ((Input a), (Input b)) -> do
-                ok <- genKeyPair rkey
-                let o = (Input ok)
-                let tt = getTT ty o (Input a) (Input b)
-                sendInfo tt
-                return o
+                   ok <- genKeyPair rkey
+                   let o = (Input ok)
+                   let tt = getTT ty o (Input a) (Input b)
+                   sendInfo tt
+                   return o
             ((Input a), (Constant b)) ->
                 processConstant ty a b
             ((Constant a), (Input b)) ->
@@ -68,7 +73,6 @@ processGates soc rkey fkeystr gates = do
         processConstant NAND key True = return $ Input key
         processConstant BIJ key False = processGate fkey (Not (Input key))
         processConstant BIJ key True = return $ Input key
-
     processGate fkey (Not node) = do
         (Input (k1, k2)) <- processGate fkey node
         return (Input (k2, k1))
