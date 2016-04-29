@@ -18,10 +18,10 @@ processGates soc rkey fkeystr gates = do
     return ret
     where
     processGate :: FixedKey -> PKey -> IO PKey
-    processGate fkey (Gate XOR (Input (a0,a1)) (Input (b0,b1))) =
-        let o1 = BS.pack $ BS.zipWith (xor) a0 b0 
-            o2 = BS.pack $ BS.zipWith (xor) a0 b1 in
-        return (Input (o1, o2))
+--    processGate fkey (Gate XOR (Input (a0,a1)) (Input (b0,b1))) =
+--        let o1 = BS.pack $ BS.zipWith (xor) a0 b0 
+--            o2 = BS.pack $ BS.zipWith (xor) a0 b1 in
+--        return (Input (o1, o2))
     processGate fkey (Gate ty k1 k2) = do
         x <- processGate fkey k1
         y <- processGate fkey k2
