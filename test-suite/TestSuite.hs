@@ -38,6 +38,7 @@ spec (csoc, psoc)=  do
     it "Num Cmp 64 True" $ boolTest (numCmp) test64 (test64-1) True
     it "Num Cmp 64 False" $ boolTest (numCmp) test64 test64 False
     it "Num Cmp 64 False" $ boolTest (numCmp) test64 (test64+1) False
+    it "Num hamDist 64 False" $ hamTest (hammingDist) test64 testb64 (28 :: Int8)
     it "Num XOR 64 True" $ listTest (O.xor) (15 :: Int64) (20 :: Int64) ((xor) (15 :: Int64) (20 :: Int64))
     it "Num OR 64 True" $ listTest (O..|.) (15 :: Int64) (20 :: Int64) ((.|.) (15 :: Int64) (20 :: Int64))
     it "Num nand 64 True" $ listTest (O..~&.) (15 :: Int64) (20 :: Int64) ((\x -> \y -> (complement (x .&. y))) (15 :: Int64) (20 :: Int64))
@@ -51,6 +52,13 @@ spec (csoc, psoc)=  do
 
     boolTest :: FiniteBits b => (forall a. SecureFunction a) -> b -> b -> Bool -> Expectation
     boolTest test num1 num2 expect = (doTest (csoc, psoc) (num1, num2) test) `shouldReturn` [expect]
+
+    hamTest  :: FiniteBits b => (forall a. SecureFunction a) -> b -> b -> Int8 -> Expectation
+    hamTest test inputNum inputNum2 expectedNumber = do 
+        ourAnswers <- (doTest (csoc, psoc) (inputNum, inputNum2) test) 
+        let expectAnswers = (bitsToBools expectedNumber)
+        ourAnswers `shouldBe` expectAnswers
+ 
 
     listTest  :: FiniteBits b => (forall a. SecureFunction a) -> b -> b -> b -> Expectation
     listTest test inputNum inputNum2 expectedNumber = do 
