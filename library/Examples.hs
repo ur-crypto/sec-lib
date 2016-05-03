@@ -86,7 +86,7 @@ numEq n1 n2 = [foldl1 (&&) (zipWith bij n1 n2)]
 hammingDist :: SecureFunction a
 hammingDist n1 n2 = let difference = xor n1 n2 in
                         let (len,distance) = hammingWeight 64  difference in
-                            distance
+                            (Constant False:[])++distance
 
 
 hammingWeight :: Int -> [Node a1] -> (Int, [Node a1])

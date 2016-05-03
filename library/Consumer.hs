@@ -20,8 +20,8 @@ processGates soc fkeystr gates = do
     return vals
     where
     processGate :: FixedKey -> VM.IOVector Int -> CKey -> IO CKey
---    processGate fkey vec (Gate XOR (Input a) (Input b)) =
---        return (Input (B.pack $ B.zipWith (xor) a b))
+    processGate fkey vec (Gate XOR (Input a) (Input b)) =
+        return (Input (B.pack $ B.zipWith (xor) a b))
     processGate fkey vec (Gate ty k1 k2) = do
         x <- processGate fkey vec k1
         y <- processGate fkey vec k2
