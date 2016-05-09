@@ -13,6 +13,8 @@ nand :: Node a -> Node a -> Node a
 nand = Gate NAND
 bij :: Node a -> Node a -> Node a
 bij = Gate BIJ
+not :: Node a -> Node a
+not = Not
 
 --Bit macros
 (.&.) :: SecureFunction a
@@ -31,11 +33,11 @@ complement xs = xor xs xs
     where
     imp :: [Node a] -> [Node a] -> Node a
     imp [n1] [n2] = 
-           let nbool = Gate NAND n2 n2 in
+           let nbool = not n2 in
            n1 && nbool
     imp (n1:n1s) (n2:n2s) =
-           let nbool = Gate NAND n2 n2 
-               mbool = Gate NAND n1 n1 in
+           let nbool = not n2 
+               mbool = not n1 in
            ifThenElse ( n1 && nbool) n1 (ifThenElse (mbool && n2) n1 (imp n1s n2s))
     imp _ _ = P.error "Bad args for imp"
 

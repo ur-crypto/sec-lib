@@ -16,65 +16,67 @@ processGates soc rkey fkeystr gates = do
     let fkey = initFixedKey fkeystr
     mapM (processGate fkey) gates
     where
-    processGate :: FixedKey -> PKey -> IO PKey
-    processGate fkey (Gate XOR (Input (a0,a1)) (Input (b0,b1))) =
-        let o1 = BS.pack $ BS.zipWith xor a0 b0 
-            o2 = BS.pack $ BS.zipWith xor a0 b1 in
-        return (Input (o1, o2))
-    processGate fkey (Gate ty k1 k2) = do
-        x <- processGate fkey k1
-        y <- processGate fkey k2
-        case (x, y) of
-            ((Input a), (Input b)) -> do
-                   ok <- genKeyPair rkey
-                   let o = (Input ok)
-                   let tt = getTT ty o (Input a) (Input b)
-                   sendInfo tt
-                   return o
-            ((Input a), (Constant b)) ->
-                processConstant ty a b
-            ((Constant a), (Input b)) ->
-                processConstant ty b a
-            ((Constant a), (Constant b)) ->
-                return $ case ty of
-                    AND -> Constant (a && b)
-                    OR -> Constant (a || b)
-                    XOR -> Constant (xor a b)
-                    NAND -> Constant (not (a && b))
-                    BIJ -> Constant (not (xor a b))
-            (_, _) -> error "process gate returning wrong value"
-        where
-        getTT AND (Input (o0, o1)) = helper o0 o0 o0 o1
-        getTT OR (Input (o0, o1)) = helper o0 o1 o1 o1
-        getTT XOR (Input (o0, o1)) = helper o0 o1 o1 o0
-        getTT NAND (Input (o0, o1)) = helper o1 o1 o1 o0
-        getTT BIJ (Input (o0, o1)) = helper o1 o0 o0 o1
-        getTT _ _ = error "Should not pass gates to gates"
+        processGate :: FixedKey -> PKey -> IO PKey
+        processGate fkey (Gate XOR (Input (a0,a1)) (Input (b0,b1))) =
+            let o1 = BS.pack $ BS.zipWith xor a0 b0 
+                o2 = BS.pack $ BS.zipWith xor a0 b1 in
+            return (Input (o1, o2))
+        processGate fkey (Gate ty k1 k2) = do
+            x <- processGate fkey k1
+            y <- processGate fkey k2
+            case (x, y) of
+                ((Input a), (Input b)) -> do
+                       ok <- genKeyPair rkey
+                       let o = (Input ok)
+                       let tt = getTT ty o (Input a) (Input b)
+                       sendInfo tt
+                       return o
+                ((Input a), (Constant b)) ->
+                    processConstant ty a b
+                ((Constant a), (Input b)) ->
+                    processConstant ty b a
+                ((Constant a), (Constant b)) ->
+                    return $ case ty of
+                        AND -> Constant (a && b)
+                        OR -> Constant (a || b)
+                        XOR -> Constant (xor a b)
+                        NAND -> Constant (not (a && b))
+                        BIJ -> Constant (not (xor a b))
+                (_, _) -> error "process gate returning wrong value"
+            where
+            getTT AND (Input (o0, o1)) = helper o0 o0 o0 o1
+            getTT OR (Input (o0, o1)) = helper o0 o1 o1 o1
+            getTT XOR (Input (o0, o1)) = helper o0 o1 o1 o0
+            getTT NAND (Input (o0, o1)) = helper o1 o1 o1 o0
+            getTT BIJ (Input (o0, o1)) = helper o1 o0 o0 o1
+            getTT _ _ = error "Should not pass gates to gates"
 
-        helper o1 o2 o3 o4 (Input (a0, a1)) (Input (b0, b1))=
-            TruthTable (a0, b0, o1) (a0, b1, o2) (a1, b0, o3) (a1, b1, o4)
-        helper _ _ _ _ _ _ = error "Should only pass values"
+            helper o1 o2 o3 o4 (Input (a0, a1)) (Input (b0, b1))=
+                TruthTable (a0, b0, o1) (a0, b1, o2) (a1, b0, o3) (a1, b1, o4)
+            helper _ _ _ _ _ _ = error "Should only pass values"
 
-        sendInfo :: PTT -> IO()
-        sendInfo (TruthTable r1 r2 r3 r4) = do
-            outkeys <- shuffle $ map (encOutKey fkey) [r1, r2, r3, r4]
-            SBS.sendMany soc outkeys
+            sendInfo :: PTT -> IO()
+            sendInfo (TruthTable r1 r2 r3 r4) = do
+                outkeys <- shuffle $ map (encOutKey fkey) [r1, r2, r3, r4]
+                SBS.sendMany soc outkeys
 
-        processConstant :: GateType -> (Key, Key) -> Bool -> IO PKey
-        processConstant AND _ False = return $ Constant False
-        processConstant AND key True = return $ Input key
-        processConstant OR key False = return $ Input key
-        processConstant OR _ True = return $ Constant True
-        processConstant XOR key False = return $ Input key
-        processConstant XOR key True = processGate fkey (Not (Input key))
-        processConstant NAND _ False = return $ Constant True
-        processConstant NAND key True = return $ Input key
-        processConstant BIJ key False = processGate fkey (Not (Input key))
-        processConstant BIJ key True = return $ Input key
-    processGate fkey (Not node) = do
-        (Input (k1, k2)) <- processGate fkey node
-        return (Input (k2, k1))
-    processGate _ x = return x
+            processConstant :: GateType -> (Key, Key) -> Bool -> IO PKey
+            processConstant AND _ False = return $ Constant False
+            processConstant AND key True = return $ Input key
+            processConstant OR key False = return $ Input key
+            processConstant OR _ True = return $ Constant True
+            processConstant XOR key False = return $ Input key
+            processConstant XOR key True = processGate fkey (Not (Input key))
+            processConstant NAND _ False = return $ Constant True
+            processConstant NAND key True = return $ Input key
+            processConstant BIJ key False = processGate fkey (Not (Input key))
+            processConstant BIJ key True = return $ Input key
+        processGate fkey (Not node) = do
+            procNode <- processGate fkey node
+            case procNode of
+                Input (k1, k2) -> return $ Input (k2, k1)
+                Constant l -> return . Constant $ not l
+        processGate _ x = return x
 
 getSocket :: IO Socket
 getSocket = do
