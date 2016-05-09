@@ -14,18 +14,17 @@ type PTT = TruthTable (Key, Key, Key)
 processGates :: Socket -> Key -> Key -> [PKey] -> IO [PKey]
 processGates soc rkey fkeystr gates = do
     let fkey = initFixedKey fkeystr
-    ret <- mapM (processGate fkey) gates
-    return ret
+    mapM (processGate fkey) gates
     where
     processGate :: FixedKey -> PKey -> IO PKey
     processGate fkey (Gate XOR (Input (a0,a1)) (Input (b0,b1))) =
-        let o1 = BS.pack $ BS.zipWith (xor) a0 b0 
-            o2 = BS.pack $ BS.zipWith (xor) a0 b1 in
+        let o1 = BS.pack $ BS.zipWith xor a0 b0 
+            o2 = BS.pack $ BS.zipWith xor a0 b1 in
         return (Input (o1, o2))
     processGate fkey (Gate ty k1 k2) = do
         x <- processGate fkey k1
         y <- processGate fkey k2
-        ret <- case (x, y) of
+        case (x, y) of
             ((Input a), (Input b)) -> do
                    ok <- genKeyPair rkey
                    let o = (Input ok)
@@ -44,7 +43,6 @@ processGates soc rkey fkeystr gates = do
                     NAND -> Constant (not (a && b))
                     BIJ -> Constant (not (xor a b))
             (_, _) -> error "process gate returning wrong value"
-        return ret
         where
         getTT AND (Input (o0, o1)) = helper o0 o0 o0 o1
         getTT OR (Input (o0, o1)) = helper o0 o1 o1 o1

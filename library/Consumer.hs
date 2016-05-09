@@ -15,17 +15,16 @@ processGates :: Socket -> Key -> [CKey] -> IO [CKey]
 processGates soc fkeystr gates = do
     gateTypes <- VM.new 6 
     let fkey = initFixedKey fkeystr
-    vals <- mapM (processGate fkey gateTypes) gates
+    mapM (processGate fkey gateTypes) gates
     --_ <- mapM (printGates gateTypes) [0 .. 5]
-    return vals
     where
     processGate :: FixedKey -> VM.IOVector Int -> CKey -> IO CKey
     processGate fkey vec (Gate XOR (Input a) (Input b)) =
-        return (Input (B.pack $ B.zipWith (xor) a b))
+        return (Input (B.pack $ B.zipWith xor a b))
     processGate fkey vec (Gate ty k1 k2) = do
         x <- processGate fkey vec k1
         y <- processGate fkey vec k2
-        ret <- case (x, y) of
+        case (x, y) of
             ((Input a), (Input b)) -> do
                 countType vec ty
                 tt <- getTT
@@ -42,7 +41,6 @@ processGates soc fkeystr gates = do
                     NAND -> Constant (not (a && b))
                     BIJ -> Constant (not (xor a b))
             (_, _) -> error "process gate returning wrong value"
-        return ret
     processGate _ vec (Not a) = do
         VM.modify vec (\x -> x+1) 5
         return a
