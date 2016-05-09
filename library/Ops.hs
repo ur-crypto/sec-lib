@@ -18,13 +18,13 @@ not = Not
 
 --Bit macros
 (.&.) :: SecureFunction a
-(.&.) xs ys = P.zipWith (&&) xs ys
+(.&.) = P.zipWith (&&)
 (.|.) :: SecureFunction a
-(.|.) xs ys = P.zipWith (||) xs ys
+(.|.) = P.zipWith (||)
 xor :: SecureFunction a
-xor xs ys = P.zipWith b_xor xs ys
+xor = P.zipWith b_xor
 (.~&.) :: SecureFunction a
-(.~&.) xs ys = P.zipWith (nand) xs ys
+(.~&.) = P.zipWith nand
 complement :: [Node a] -> [Node a]
 complement xs = xor xs xs
 
