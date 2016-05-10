@@ -2,6 +2,7 @@ module Examples where
 import Types
 import Ops
 import Data.Int
+import Data.Bits
 import Prelude hiding ((&&), (||), ifThenElse)
 
 
