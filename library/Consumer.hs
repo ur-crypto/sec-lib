@@ -15,11 +15,13 @@ processGates :: Socket -> Key -> [CKey] -> IO [CKey]
 processGates soc fkeystr gates = do
     gateTypes <- VM.new 6 
     let fkey = initFixedKey fkeystr
-    mapM (processGate fkey gateTypes) gates
+    res <- mapM (processGate fkey gateTypes) gates
+    --print res
+    return res
     --_ <- mapM (printGates gateTypes) [0 .. 5]
     where
         processGate :: FixedKey -> VM.IOVector Int -> CKey -> IO CKey
-        processGate fkey vec (Gate XOR (Input a) (Input b)) =
+        processGate _ _ (Gate XOR (Input a) (Input b)) =
             return (Input (B.pack $ B.zipWith xor a b))
         processGate fkey vec (Gate ty k1 k2) = do
             x <- processGate fkey vec k1
@@ -41,9 +43,13 @@ processGates soc fkeystr gates = do
                         NAND -> Constant (not (a && b))
                         BIJ -> Constant (not (xor a b))
                 (_, _) -> error "process gate returning wrong value"
-        processGate _ vec (Not a) = do
+        processGate fkey vec (Not a) = do
             VM.modify vec (\x -> x+1) 5
-            return a
+            ret <- processGate fkey vec a
+            case ret of
+                (Constant c) -> return $ Constant $ not c
+                _ -> return ret
+
         processGate _ _ x = return x
         countType vec ty = case ty of
                         AND     -> VM.modify vec (\x -> x+1) 0 
@@ -108,7 +114,7 @@ doWithSocket soc (produceInput, consumeInput) test = do
     receiveList :: Int -> IO [Key]
     receiveList num = mapM (const $ SBS.recv soc cipherSize) [1..num]
     receiveOutputs :: [CKey] -> IO [Bool]
-    receiveOutputs nodes = mapM receiveNodes nodes
+    receiveOutputs = mapM receiveNodes
         where
         receiveNodes :: Node Key -> IO Bool
         receiveNodes (Input k) = do
@@ -120,7 +126,8 @@ doWithSocket soc (produceInput, consumeInput) test = do
                 | k == o1 -> True
                 | otherwise -> error "Incorrect answer found"
         receiveNodes (Constant k) = return k
-        receiveNodes _ = error "Don't pass completed list"
+        receiveNodes (Not k) = receiveNodes k
+        receiveNodes x = error "Should not be receiving gate"
 
 doWithoutSocket ::FiniteBits a => (a, a) -> SecureFunction Key -> IO [Bool]
 doWithoutSocket input test = do

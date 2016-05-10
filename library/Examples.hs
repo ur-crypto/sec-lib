@@ -32,7 +32,7 @@ testb8 = 12
 
 
 andShift :: SecureFunction a
-andShift xs ys = (shiftL 1 xs) .&. ys
+andShift xs ys = (shiftL xs 1) .&. ys
 
 addInt :: [Node a1] -> [Node a1] -> [Node a1]
 addInt m n = let (len,(carry,subTotal)) =  addIntFP 32 32 m 32 n in 

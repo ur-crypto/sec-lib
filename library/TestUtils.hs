@@ -16,7 +16,13 @@ doTest (csoc, psoc) (inputProduce, inputConsume) test = do
     pro <- wait proOutHandle
     if foldl (&&) True (zipWith (==) con pro)
         then return con
-        else error "disagreement on answer"
+        else do
+            putStrLn "Producer"
+            print pro
+            putStrLn ""
+            putStrLn "Consumer"
+            print con
+            error "disagreement on answer"
 
 printTest :: FiniteBits b => (Socket, Socket) -> (b, b) -> (forall a. SecureFunction a) -> IO ()
 printTest (csoc, psoc) (a, b) test = do

@@ -14,7 +14,9 @@ type PTT = TruthTable (Key, Key, Key)
 processGates :: Socket -> Key -> Key -> [PKey] -> IO [PKey]
 processGates soc rkey fkeystr gates = do
     let fkey = initFixedKey fkeystr
-    mapM (processGate fkey) gates
+    res <- mapM (processGate fkey) gates
+    --print res
+    return res
     where
         processGate :: FixedKey -> PKey -> IO PKey
         processGate fkey (Gate XOR (Input (a0,a1)) (Input (b0,b1))) =
@@ -75,7 +77,7 @@ processGates soc rkey fkeystr gates = do
             procNode <- processGate fkey node
             case procNode of
                 Input (k1, k2) -> return $ Input (k2, k1)
-                Constant l -> return . Constant $ not l
+                Constant l -> return $ Constant $ not l
         processGate _ x = return x
 
 getSocket :: IO Socket

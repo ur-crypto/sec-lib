@@ -28,6 +28,9 @@ main = do
 
 spec :: (Socket, Socket) -> Spec
 spec (csoc, psoc)=  do
+    it "Tests for constant negation" $ 
+        listTest (\x -> \y -> (O.complement $ (O.shiftL x 2) O..&. (O.shiftL y 2)))
+            (2 ::Int8) (3 ::Int8) (complement $ (shiftL (2::Int8) 2) .&. (shiftL (3::Int8) 2))
     it "Num Eq 16 True" $ boolTest numEq test16 test16 True
     it "Num Eq 16 True" $ boolTest numEq test16 test16 True
     it "Num Eq 16 False" $ boolTest numEq test16 (test16-1) False
@@ -49,28 +52,28 @@ spec (csoc, psoc)=  do
         close psoc
         True `shouldBe` True
     where
+        boolTest :: FiniteBits b => (forall a. SecureFunction a) -> b -> b -> Bool -> Expectation
+        boolTest test num1 num2 expect = (doTest (csoc, psoc) (num1, num2) test) `shouldReturn` [expect]
 
-    boolTest :: FiniteBits b => (forall a. SecureFunction a) -> b -> b -> Bool -> Expectation
-    boolTest test num1 num2 expect = (doTest (csoc, psoc) (num1, num2) test) `shouldReturn` [expect]
+        hamTest  :: FiniteBits b => (forall a. SecureFunction a) -> b -> b -> Int8 -> Expectation
+        hamTest test inputNum inputNum2 expectedNumber = do 
+            ourAnswers <- (doTest (csoc, psoc) (inputNum, inputNum2) test) 
+            let expectAnswers = (bitsToBools expectedNumber)
+            ourAnswers `shouldBe` expectAnswers
+     
 
-    hamTest  :: FiniteBits b => (forall a. SecureFunction a) -> b -> b -> Int8 -> Expectation
-    hamTest test inputNum inputNum2 expectedNumber = do 
-        ourAnswers <- (doTest (csoc, psoc) (inputNum, inputNum2) test) 
-        let expectAnswers = (bitsToBools expectedNumber)
-        ourAnswers `shouldBe` expectAnswers
- 
+        listTest  :: FiniteBits b => (forall a. SecureFunction a) -> b -> b -> b -> Expectation
+        listTest test inputNum inputNum2 expectedNumber = do 
+            ourAnswers <- (doTest (csoc, psoc) (inputNum, inputNum2) test) 
+            let expectAnswers = (bitsToBools expectedNumber)
+            ourAnswers `shouldBe` expectAnswers
 
-    listTest  :: FiniteBits b => (forall a. SecureFunction a) -> b -> b -> b -> Expectation
-    listTest test inputNum inputNum2 expectedNumber = do 
-        ourAnswers <- (doTest (csoc, psoc) (inputNum, inputNum2) test) 
-        let expectAnswers = (bitsToBools expectedNumber)
-        ourAnswers `shouldBe` expectAnswers
-    {-
-    exhaustiveTest :: (forall a. SecureFunction a) -> (forall b. FiniteBits b => b -> b -> b) -> Expectation
-    exhaustiveTest test equivalent = do
-      let nums = [minBound :: Int8 .. maxBound :: Int8]
-      let numCombos = [ (x, y) | x<-nums, y<-nums ] --idk how this works but it sure is pretty
-      let numAnswers = map (\xt -> case xt of (x, y) -> bitsToBools $ (equivalent) x y) numCombos
-      ourAnswers <- mapM (\x -> doTest (csoc, psoc) x test) numCombos
-      ourAnswers `shouldBe` numAnswers
-    -}
+        {-
+        exhaustiveTest :: (forall a. SecureFunction a) -> (forall b. FiniteBits b => b -> b -> b) -> Expectation
+        exhaustiveTest test equivalent = do
+          let nums = [minBound :: Int8 .. maxBound :: Int8]
+          let numCombos = [ (x, y) | x<-nums, y<-nums ] --idk how this works but it sure is pretty
+          let numAnswers = map (\xt -> case xt of (x, y) -> bitsToBools $ (equivalent) x y) numCombos
+          ourAnswers <- mapM (\x -> doTest (csoc, psoc) x test) numCombos
+          ourAnswers `shouldBe` numAnswers
+        -}
