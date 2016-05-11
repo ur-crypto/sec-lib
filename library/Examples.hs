@@ -1,13 +1,18 @@
 module Examples where
 import Types
-import Ops
+import Utils
+import Ops as O
 import Data.Int
-import Data.Bits
-import Prelude hiding ((&&), (||), ifThenElse)
+import Data.Array
+import Prelude hiding ((&&), (||), ifThenElse,ifThenElses)
 
 
 test8 :: Int8
-test8 = 5
+test8 = 35
+
+testb8 :: Int8
+testb8 = 74
+
 
 test16 :: Int16
 test16 = 125
@@ -28,16 +33,15 @@ testb64 = 744073709551616
 test64 :: Int64
 test64 = 395648674974903
 
-testb8 :: Int8
-testb8 = 12
 
-
-andShift :: SecureFunction a
-andShift xs ys = (shiftL xs 1) .&. ys
+--andShift :: SecureFunction a
+--andShift xs ys = (O.shiftL 1 xs) O..&. ys
 
 addInt :: [Node a1] -> [Node a1] -> [Node a1]
-addInt m n = let (len,(carry,subTotal)) =  addIntFP 32 32 m 32 n in 
-                 subTotal
+addInt m n = let lenm = length m
+                 lenn = length n in
+                       let (len,(carry,subTotal)) =  addIntFP 16 lenm m lenn n in 
+                           subTotal
 
 addIntFP :: Int -> Int -> [Node a1] -> Int -> [Node a1] -> (Int, (Node a1, [Node a1]))
 addIntFP p m1 [n1] m2 [n2] = (1,(n1 && n2,((Gate XOR n1 n2):[])))
@@ -65,8 +69,26 @@ subCompute (p1:p1s) (g1:g1s) =
       let (len,(carry,prevcarry)) = subCompute p1s g1s in
           (len+1,((Gate XOR g1 (carry && p1)),(((Gate XOR p1 carry):[])++prevcarry)))
 -- subCompute _ _ = error "unbalanced inputs"
-          
 
+numCmps :: [Node a] -> [Node a] -> Node a          
+numCmps as bs = Constant False
+{-numCmps as bs = imp as bs
+    where
+    imp :: [Node a] -> [Node a] -> Node a
+    imp [n1] [n2] = 
+           let nbool = Not n2 in
+           n1 && nbool
+    imp (n1:n1s) (n2:n2s) =
+           let nbool = Not n2 
+               mbool = Not n1 
+               l1 = length n1s
+               l2 = length n2s in
+               case (l1 > l2,l1 < l2) of
+                    (True,_)      -> n1 || (imp n1s (n2:n2s))
+                    (False,False) -> ifThenElse ( n1 && nbool) n1 (ifThenElse (mbool && n2) n1 (imp n1s n2s))
+                    (False,True)  -> n2 || (imp (n1:n1s) n2s)
+    imp _ _ = error "Bad args for imp"
+-}
 
 numCmp :: SecureFunction a
 numCmp as bs = [imp as bs]
@@ -80,6 +102,9 @@ numCmp as bs = [imp as bs]
                mbool = Not n1 in
            ifThenElse ( n1 && nbool) n1 (ifThenElse (mbool && n2) n1 (imp n1s n2s))
     imp _ _ = error "Bad args for imp"
+
+numEqs :: [Node a] -> [Node a] -> Node a          
+numEqs n1 n2 = foldl1 (&&) (zipWith bij n1 n2)
 
 numEq :: SecureFunction a
 numEq n1 n2 = [foldl1 (&&) (zipWith bij n1 n2)]
@@ -99,6 +124,45 @@ hammingWeight p n =
                                     let (len,(carry,subTotal)) = addIntFP 6 lenleft subleft lenright subright in
                                           (len+1,((carry:[])++subTotal))
          (False)    ->    (1,n)
+
+ourBool (n1:n1s) = case n1 of
+                       (True)   ->    ((Constant True):[]) ++ (ourBool n1s)
+                       (False)  ->    ((Constant False):[]) ++ (ourBool n1s)
+ourBool [] = []
+
+editDistance :: SecureFunction a 
+editDistance xs ys = table ! (m,n)
+    where
+    m     = 8 :: Int
+    n     = 8 :: Int
+    --(m,n) = (length xs, length ys)
+    x     = array (1,m) (zip [1..] xs)
+    y     = array (1,n) (zip [1..] ys)
+ 
+    --table :: Array (Int,Int) [Node a]
+    table = array bnds [(ij, dist ij) | ij <- range bnds]
+    bnds  = ((0,0),(m,n))
+    --bnds  = ((0,0),(m,n))
+    dist (0,0) = [Constant False] 
+    --dist (0,j) = let (l1,(b1,a1)) = addIntFP 4 (length (table ! (0,j-1))) (table ! (0,j-1)) 1 ((Constant True):[]) in (b1:[])++a1
+    --dist (i,0) = let (l1,(b1,a1)) = addIntFP 4 (length (table ! (i-1,0))) (table ! (i-1,0)) 1 ((Constant True):[]) in (b1:[])++a1
+    dist (0,j) = ourBool (bitsToBools (fromIntegral (j :: Int) :: Int8))
+    dist (i,0) = ourBool (bitsToBools (fromIntegral (i :: Int) :: Int8))
+    dist (i,j) = let (li,(carry,intermed)) = addIntFP 4 (length (table ! (i-1,j-1))) (table ! (i-1,j-1)) 1 ((Constant True):[]) in 
+                     let result = ifThenElses (numCmps (table ! (i-1,j)) (table ! (i,j-1))) (table ! (i,j-1)) 
+                                          (ifThenElses (numCmps (table ! (i-1,j-1)) ((carry:[])++intermed)) ((carry:[])++intermed) (table ! (i-1,j))) in
+                              let (l1,(b1,a1)) = addIntFP 4 (length result) result 1 ((Constant True):[]) in
+                              (b1:[])++a1
+                     -- ifThenElses (numCmps ((b1:[])++a1) ((b2:[])++a2)) ((b2:[])++a2) ((b1:[])++a1)
+    --dist (i,j) = a1 --ifThenElses (numCmps a1 a2) a2 (ifThenElses (numCmps a1 a3) a3 a1)
+                    -- a3 = ifThenElses (Gate XOR (x ! i) (y ! i)) ab3 aa3
+                      --   where
+                        -- aa3 = table ! (i-1,j-1)
+                        -- (la3,(bb3,ab3)) = addIntFP 8 (length (table ! (i-1,j-1))) (table ! (i-1,j-1)) 2 ((Constant True):(Constant False):[]) 
+
+-- minimum [table ! (i-1,j) + 1, table ! (i,j-1) + 1,
+--        if x ! i == y ! j then table ! (i-1,j-1) else 1 + table ! (i-1,j-1)]
+
 
 ueand :: [Node a] -> [Node a] -> [Node a]
 ueand (n1:n1s) [] = let reslt = ueand n1s [] in
