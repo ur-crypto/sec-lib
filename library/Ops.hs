@@ -1,5 +1,6 @@
 module Ops where
 import Types
+import Data.Bits
 import qualified Prelude as P
 
 --Gate Macros
@@ -35,6 +36,8 @@ not = Not
 
 (==.) :: SecureFunction a
 (==.) n1 n2 = [P.foldl1 (&&) (P.zipWith bij n1 n2)]
+(/=.) :: SecureFunction a
+(/=.) a b = complement (a ==. b)
 
 --If Then Else Macro
 ifThenElse :: Node a -> Node a -> Node a -> Node a

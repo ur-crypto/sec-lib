@@ -3,6 +3,7 @@ import Types
 import Utils
 import Ops as O
 import Data.Int
+import Data.Bits
 import Data.Array
 import Prelude hiding ((&&), (||), ifThenElse,ifThenElses)
 
@@ -70,7 +71,7 @@ subCompute (p1:p1s) (g1:g1s) =
           (len+1,((Gate XOR g1 (carry && p1)),(((Gate XOR p1 carry):[])++prevcarry)))
 -- subCompute _ _ = error "unbalanced inputs"
 
-numCmps :: [Node a] -> [Node a] -> Node a          
+numCmps :: [Node a] -> [Node a] -> Node a
 numCmps as bs = Constant False
 {-numCmps as bs = imp as bs
     where
@@ -130,6 +131,7 @@ ourBool (n1:n1s) = case n1 of
                        (False)  ->    ((Constant False):[]) ++ (ourBool n1s)
 ourBool [] = []
 
+{-
 editDistance :: SecureFunction a 
 editDistance xs ys = table ! (m,n)
     where
@@ -149,8 +151,8 @@ editDistance xs ys = table ! (m,n)
     dist (0,j) = ourBool (bitsToBools (fromIntegral (j :: Int) :: Int8))
     dist (i,0) = ourBool (bitsToBools (fromIntegral (i :: Int) :: Int8))
     dist (i,j) = let (li,(carry,intermed)) = addIntFP 4 (length (table ! (i-1,j-1))) (table ! (i-1,j-1)) 1 ((Constant True):[]) in 
-                     let result = ifThenElses (numCmps (table ! (i-1,j)) (table ! (i,j-1))) (table ! (i,j-1)) 
-                                          (ifThenElses (numCmps (table ! (i-1,j-1)) ((carry:[])++intermed)) ((carry:[])++intermed) (table ! (i-1,j))) in
+                     let result = ifThenElse (numCmps (table ! (i-1,j)) (table ! (i,j-1))) (table ! (i,j-1))
+                                          (ifThenElse (numCmps (table ! (i-1,j-1)) ((carry:[])++intermed)) ((carry:[])++intermed) (table ! (i-1,j))) in
                               let (l1,(b1,a1)) = addIntFP 4 (length result) result 1 ((Constant True):[]) in
                               (b1:[])++a1
                      -- ifThenElses (numCmps ((b1:[])++a1) ((b2:[])++a2)) ((b2:[])++a2) ((b1:[])++a1)
@@ -163,6 +165,7 @@ editDistance xs ys = table ! (m,n)
 -- minimum [table ! (i-1,j) + 1, table ! (i,j-1) + 1,
 --        if x ! i == y ! j then table ! (i-1,j-1) else 1 + table ! (i-1,j-1)]
 
+-}
 
 ueand :: [Node a] -> [Node a] -> [Node a]
 ueand (n1:n1s) [] = let reslt = ueand n1s [] in
@@ -207,5 +210,11 @@ hammingWt p n =
          (False,True)    -> let (fb:[sb]) = n in (2,((fb && sb):((b_xor) fb sb):[])) 
          (False,False)   -> (1,n)
 
-
-
+{-
+levenshtein2 :: SecureFunction a
+levenshtein2 sa sb = last $ foldl transform [0..length sa] sb 
+   where
+         transform xs@(x:xs') c = scanl compute (x+1) (zip3 sa xs xs') 
+                  where
+                              compute z (c', x, y) = minimum [y+1, z+1, x + fromEnum (c' /= c)]
+                              -}

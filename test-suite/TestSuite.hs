@@ -28,9 +28,6 @@ main = do
 
 spec :: (Socket, Socket) -> Spec
 spec (csoc, psoc)=  do
-    it "Tests for constant negation" $ 
-        listTest (\x -> \y -> (complement $ (shiftL x 2) .&. (shiftL y 2)))
-            (2 ::Int8) (3 ::Int8) (complement $ (shiftL (2::Int8) 2) .&. (shiftL (3::Int8) 2))
     it "Num Eq 16 True" $ boolTest numEq test16 test16 True
     it "Num Eq 16 True" $ boolTest numEq test16 test16 True
     it "Num Eq 16 False" $ boolTest numEq test16 (test16-1) False
@@ -45,7 +42,12 @@ spec (csoc, psoc)=  do
     it "Num XOR 64 True" $ listTest xor (15 :: Int64) (20 :: Int64) (xor (15 :: Int64) (20 :: Int64))
     it "Num OR 64 True" $ listTest (.|.) (15 :: Int64) (20 :: Int64) ((.|.) (15 :: Int64) (20 :: Int64))
     it "Num nand 64 True" $ listTest (O..~&.) (15 :: Int64) (20 :: Int64) ((\x -> \y -> (complement (x .&. y))) (15 :: Int64) (20 :: Int64))
-    it "Num Shift 64 True" $ listTest andShift (15 :: Int64) (20 :: Int64) ((.&.) (30 :: Int64) (20 :: Int64))
+    --it "Num Shift 64 True" $ listTest andShift (15 :: Int64) (20 :: Int64) ((.&.) (30 :: Int64) (20 :: Int64))
+    it "Tests for constant negation" $ 
+        listTest (\x -> \y -> (complement $ (shiftL x 2) .&. (shiftL y 2)))
+            (2 ::Int8) (3 ::Int8) (complement $ (shiftL (2::Int8) 2) .&. (shiftL (3::Int8) 2))
+    it "Test addition" $
+        listTest addInt (1::Int16) (1::Int16) (2::Int16)
    -- it "Num Cmp 8 All" $ exhaustiveTest (O.==.) (==.)
     it "Sockets Close" $ do
         close csoc

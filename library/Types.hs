@@ -36,5 +36,9 @@ instance Bits (SecureList a) where
     complement = P.map P.$ Not
     shiftL xs num = (P.drop num xs) P.++ P.map (P.const P.$ Constant P.False) [0 .. num P.-1]
     shiftR xs num = P.map (P.const P.$ Constant P.False) [0 .. num P.-1] P.++ (P.take num xs)
-    rotate xs n = P.zipWith P.const (P.drop n (P.cycle xs)) xs
+--    rotate x st = P.take (P.length st) P.$ P.drop (P.negate x `P.mod` P.length st) P.$ P.cycle st
+    isSigned a = P.False
+    testBit = P.undefined
+    bit a = P.undefined
+    popCount = P.undefined
 
