@@ -47,7 +47,7 @@ spec (csoc, psoc)=  do
         listTest (\x -> \y -> (complement $ (shiftL x 2) .&. (shiftL y 2)))
             (2 ::Int8) (3 ::Int8) (complement $ (shiftL (2::Int8) 2) .&. (shiftL (3::Int8) 2))
     it "Test addition" $
-        listTest addInt (1::Int16) (1::Int16) (2::Int16)
+        listTest (+) (1::Int16) (1::Int16) (2::Int16)
    -- it "Num Cmp 8 All" $ exhaustiveTest (O.==.) (==.)
     it "Sockets Close" $ do
         close csoc
