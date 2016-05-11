@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 module Ops where
 import Types
+import Utils
 import Data.Bits
 import Prelude hiding ((&&), (||), not)
 
@@ -47,15 +48,22 @@ ifThenElse bool tb fb =
     let nbool = Gate NAND bool bool in
     ((bool && tb) || (nbool && fb))
 
+if' :: SecureList a -> SecureList a -> SecureList a -> SecureList a
+if' bools= zipWith (ifThenElse (foldl1 (||) bools))
+
+num2Const :: Int -> SecureList a
+num2Const n = map Constant (bitsToBools n)
+
+
 --add def
 addInt :: [Node a1] -> [Node a1] -> [Node a1]
 addInt m n = let lenm = length m
                  lenn = length n in
-                       let (len,(carry,subTotal)) =  addIntFP 16 lenm m lenn n in 
+                       let (_,(_,subTotal)) =  addIntFP 16 lenm m lenn n in 
                            subTotal
 
 addIntFP :: Int -> Int -> [Node a1] -> Int -> [Node a1] -> (Int, (Node a1, [Node a1]))
-addIntFP p m1 [n1] m2 [n2] = (1,(n1 && n2,((Gate XOR n1 n2):[])))
+addIntFP _ _ [n1] _ [n2] = (1,(n1 && n2,((Gate XOR n1 n2):[])))
 addIntFP p m1 (n1:n1s) m2 (n2:n2s) = 
   let cond1 = (m1 > p) 
       cond2 = (m2 > p)
@@ -72,14 +80,14 @@ addIntFP p m1 (n1:n1s) m2 (n2:n2s) =
                                          (len+1,((carry && n1),((Gate XOR n1 carry):[])++resltsum))
           (False,False,False,True)    -> let (len,(carry,resltsum)) = addIntFP p m1 (n1:n1s) (m2-1) n2s in
                                          (len+1,((carry && n2),((Gate XOR n2 carry):[])++resltsum)) 
--- addIntFP _ _ _ _ _ = error "unbalanced inputs"
+addIntFP _ _ _ _ _ = error "unbalanced inputs"
 
 subCompute :: [Node a] -> [Node a] -> (Int, (Node a, [Node a]))
 subCompute [p1] [g1]  = (1,(g1,p1:[]))
 subCompute (p1:p1s) (g1:g1s) =
       let (len,(carry,prevcarry)) = subCompute p1s g1s in
           (len+1,((Gate XOR g1 (carry && p1)),(((Gate XOR p1 carry):[])++prevcarry)))
--- subCompute _ _ = error "unbalanced inputs"
---
+subCompute _ _ = error "unbalanced inputs"
+
 instance Num (SecureList a) where
     (+) = addInt
