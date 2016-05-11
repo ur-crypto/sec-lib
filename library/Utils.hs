@@ -4,7 +4,6 @@ import OpenSSL
 import Data.Word
 import Data.Bits
 import qualified Data.ByteString as BS
-import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString.Builder as D
 import Crypto.Cipher.AES
 import Crypto.Cipher.Types
@@ -101,7 +100,3 @@ bsToBools bs = concatMap bitsToBools $ BS.unpack bs
 numBytes :: FiniteBits a => a -> Int
 numBytes n = (finiteBitSize n) `quot` 8
 
-(==.) :: FiniteBits a => a -> a -> a
-(==.) a b = if a == b
-                then bit 1
-                else zeroBits
