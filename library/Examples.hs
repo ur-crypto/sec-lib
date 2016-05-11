@@ -38,39 +38,6 @@ test64 = 395648674974903
 --andShift :: SecureFunction a
 --andShift xs ys = (O.shiftL 1 xs) O..&. ys
 
-addInt :: [Node a1] -> [Node a1] -> [Node a1]
-addInt m n = let lenm = length m
-                 lenn = length n in
-                       let (len,(carry,subTotal)) =  addIntFP 16 lenm m lenn n in 
-                           subTotal
-
-addIntFP :: Int -> Int -> [Node a1] -> Int -> [Node a1] -> (Int, (Node a1, [Node a1]))
-addIntFP p m1 [n1] m2 [n2] = (1,(n1 && n2,((Gate XOR n1 n2):[])))
-addIntFP p m1 (n1:n1s) m2 (n2:n2s) = 
-  let cond1 = (m1 > p) 
-      cond2 = (m2 > p)
-      cond3 = (m1 > m2)
-      cond4 = (m1 < m2) in
-      case (cond1,cond2,cond3,cond4) of
-          (True,True,_,_)             -> addIntFP p (m1-1) n1s (m2-1) n2s 
-          (True,False,_,_)            -> addIntFP p (m1-1) n1s m2 (n2:n2s) 
-          (False,True,_,_)            -> addIntFP p m1 (n1:n1s) (m2-1) n2s 
-          (False,False,False,False)   -> let generate = (n1:n1s) .&. (n2:n2s)
-                                             propogate = xor (n1:n1s) (n2:n2s) in
-                                             subCompute propogate generate  
-          (False,False,True,_)        -> let (len,(carry,resltsum)) = addIntFP p (m1-1) n1s m2 (n2:n2s) in
-                                         (len+1,((carry && n1),((Gate XOR n1 carry):[])++resltsum))
-          (False,False,False,True)    -> let (len,(carry,resltsum)) = addIntFP p m1 (n1:n1s) (m2-1) n2s in
-                                         (len+1,((carry && n2),((Gate XOR n2 carry):[])++resltsum)) 
--- addIntFP _ _ _ _ _ = error "unbalanced inputs"
-
-subCompute :: [Node a] -> [Node a] -> (Int, (Node a, [Node a]))
-subCompute [p1] [g1]  = (1,(g1,p1:[]))
-subCompute (p1:p1s) (g1:g1s) =
-      let (len,(carry,prevcarry)) = subCompute p1s g1s in
-          (len+1,((Gate XOR g1 (carry && p1)),(((Gate XOR p1 carry):[])++prevcarry)))
--- subCompute _ _ = error "unbalanced inputs"
-
 numCmps :: [Node a] -> [Node a] -> Node a
 numCmps as bs = Constant False
 {-numCmps as bs = imp as bs
@@ -214,7 +181,7 @@ hammingWt p n =
 levenshtein2 :: SecureFunction a
 levenshtein2 sa sb = last $ foldl transform [0..length sa] sb 
    where
-         transform xs@(x:xs') c = scanl compute (x+1) (zip3 sa xs xs') 
-                  where
-                              compute z (c', x, y) = minimum [y+1, z+1, x + fromEnum (c' /= c)]
-                              -}
+    transform xs@(x:xs') c = scanl compute (x+1) (zip3 sa xs xs') 
+        where
+            compute z (c', x, y) = minimum [y+1, z+1, x + fromEnum (c' /= c)]
+-}
