@@ -179,9 +179,11 @@ hammingWt p n =
 
 {-
 levenshtein2 :: SecureFunction a
-levenshtein2 sa sb = last $ foldl transform [0..length sa] sb 
+levenshtein2 sa sb = last $ foldl transform (map O.num2Const [0..length sa]) sb
    where
-    transform xs@(x:xs') c = scanl compute (x+1) (zip3 sa xs xs') 
+    transform xs@(x:xs') c = scanl compute (x+(O.num2Const 1)) (zip3 sa xs xs') 
         where
-            compute z (c', x, y) = minimum [y+1, z+1, x + fromEnum (c' /= c)]
+            compute z (c', x, y) = foldl1 cmp [y+(O.num2Const 1), z+(O.num2Const 1), x + (c' O./=. c)]
+                where
+                    cmp x y = O.if' (x O.<. y) x y
 -}
