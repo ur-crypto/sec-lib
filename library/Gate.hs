@@ -124,6 +124,4 @@ instance LocalValue GateCounter where
             type2Int XOR = 2
             type2Int BIJ = 3
             type2Int NAND = 4
-        
-        
 
