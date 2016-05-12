@@ -138,6 +138,5 @@ countGates :: Int -> SecureFunction Int -> IO()
 countGates inputs func = do
     let inp = map (const $ Input 0) [0..inputs-1]
     let tree = func inp inp
-    print $ head tree
     res <- process Nothing [] $ head tree
     print res
