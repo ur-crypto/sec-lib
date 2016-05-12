@@ -8,8 +8,6 @@ import qualified Data.ByteString as BS
 import Data.Bits
 import Control.Concurrent
 
-type PKey = Node (Key, Key)
-type PTT = TruthTable (Key, Key, Key)
 
 processGates :: Socket -> Key -> Key -> [PKey] -> IO [PKey]
 processGates soc rkey fkeystr gates = do

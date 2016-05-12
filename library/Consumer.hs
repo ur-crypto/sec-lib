@@ -8,9 +8,6 @@ import qualified Network.Socket.ByteString as SBS
 import qualified Data.ByteString as B
 import qualified Data.Vector.Unboxed.Mutable as VM
 
-type CKey = Node Key
-type CTT = TruthTable Key
-
 processGates :: Socket -> Key -> [CKey] -> IO [CKey]
 processGates soc fkeystr gates = do
     gateTypes <- VM.new 6 
