@@ -127,12 +127,19 @@ instance LocalValue GateCounter where
             type2Int BIJ = 3
             type2Int NAND = 4
 
-countGates :: Int -> SecureFunction GateCounter -> IO()
+instance LocalValue Int where
+    notHandler (Input i) = return $ Input $ i+1
+    notHandler other = return other
+    gateHandler Nothing _ _ ai bi = return $ Input $ ai + bi + 1
+
+countGates :: Int -> SecureFunction Int -> IO()
 countGates inputs func = do
-    let counters = map (const (Input [0,0,0,0,0,0])) [0..inputs-1]
-    let tree = func counters counters
+    let tree = func [Input 0] [Input 0]
     res <- mapM (process Nothing []) tree
-    print $ foldl' combine [0,0,0,0,0,0] res
+    print res
+    
+    --res <- mapM (process Nothing []) tree
+    --print $ foldl' combine [0,0,0,0,0,0] res
     where
         combine acc (Input x) = zipWith (+) acc x
         combine acc _ = acc

@@ -23,7 +23,7 @@ doArgs ("both":_) = do
     hpsoc <- async P.getSocket
     csoc <- wait hcsoc
     psoc <- wait hpsoc
-    printTest (csoc, psoc) (1::Int8,4::Int8) (+)
+    printTest (csoc, psoc) (1::Int8,4::Int8) edist
 doArgs _ = usage
 
 main :: IO()
