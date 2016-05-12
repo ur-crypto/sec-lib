@@ -108,7 +108,7 @@ doWithSocket soc (inputProduce, inputConsume) test =  do
     SBS.sendAll soc fkeystr
     keyList <- mapM (const (genKeyPair rkey)) l
     let (ourList, theirList) = splitAt (finiteBitSize inputProduce) (map Input keyList)
-    let bothList = (bitsToBools inputProduce) ++ (bitsToBools inputConsume)
+    let bothList = (bits2Bools inputProduce) ++ (bits2Bools inputConsume)
     sendList soc keyList bothList
     nodes <- Producer.processGates soc rkey fkeystr $ test ourList theirList
     sendOutputs nodes

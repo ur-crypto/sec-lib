@@ -132,8 +132,8 @@ editDistance xs ys = table ! (m,n)
     dist (0,0) = [Constant False] 
     --dist (0,j) = let (l1,(b1,a1)) = addIntFP 4 (length (table ! (0,j-1))) (table ! (0,j-1)) 1 ((Constant True):[]) in (b1:[])++a1
     --dist (i,0) = let (l1,(b1,a1)) = addIntFP 4 (length (table ! (i-1,0))) (table ! (i-1,0)) 1 ((Constant True):[]) in (b1:[])++a1
-    dist (0,j) = ourBool (bitsToBools (fromIntegral (j :: Int) :: Int8))
-    dist (i,0) = ourBool (bitsToBools (fromIntegral (i :: Int) :: Int8))
+    dist (0,j) = ourBool (bits2Bools (fromIntegral (j :: Int) :: Int8))
+    dist (i,0) = ourBool (bits2Bools (fromIntegral (i :: Int) :: Int8))
     dist (i,j) = let (li,(carry,intermed)) = addIntFP 4 (length (table ! (i-1,j-1))) (table ! (i-1,j-1)) 1 ((Constant True):[]) in 
                      let result = if' (numCmps (table ! (i-1,j)) (table ! (i,j-1))) (table ! (i,j-1))
                                           (if' (numCmps (table ! (i-1,j-1)) ((carry:[])++intermed)) ((carry:[])++intermed) (table ! (i-1,j))) in
@@ -193,13 +193,18 @@ hammingWt p n =
          (False,True)    -> let (fb:[sb]) = n in (2,((fb && sb):((b_xor) fb sb):[])) 
          (False,False)   -> (1,n)
 
-{-
+boolsEditDistance :: [Bool] -> [Bool] -> Int
+boolsEditDistance sa sb = last $ foldl transform [0..length sa] sb
+    where
+        transform xs@(x:xs') c = scanl compute (x+1) (zip3 sa xs xs') 
+            where
+                compute z (c', x, y) = minimum [y+1, z+1, x + fromEnum (c' /= c)]
+
 levenshtein2 :: SecureFunction a
 levenshtein2 sa sb = last $ foldl transform (map O.num2Const [0..length sa]) sb
-   where
-    transform xs@(x:xs') c = scanl compute (x+(O.num2Const 1)) (zip3 sa xs xs') 
-        where
-            compute z (c', x, y) = foldl1 cmp [y+(O.num2Const 1), z+(O.num2Const 1), x + (c' O./=. c)]
-                where
-                    cmp x y = O.if' (x O.<. y) x y
--}
+    where
+        transform xs@(x:xs') c = scanl compute (x+(O.num2Const 1)) (zip3 sa xs xs') 
+            where
+                compute z (c', x, y) = foldl1 cmp [y+(O.num2Const 1), z+(O.num2Const 1), x + (extendBy 15 $ [O.b_xor c' c])]
+                    where
+                        cmp a b = O.if' (a O.<. b) a b

@@ -8,7 +8,7 @@ import qualified Prelude as P
 
 type Key = BS.ByteString
 
-type SecureFunction a = SecureList a -> SecureList a -> SecureList a
+type SecureFunction a = SecureNum a -> SecureNum a -> SecureNum a
 
 data GateType   = AND
                 | OR
@@ -21,7 +21,7 @@ data Node a    = Gate GateType (Node a) (Node a)
                 | Constant P.Bool
                 | Input a deriving(P.Show)
 
-type SecureList a = [Node a]
+type SecureNum a = [Node a]
 
 data TruthTable a = TruthTable a a a a
 
@@ -29,7 +29,7 @@ instance P.Eq (Node a) where
     (==) = P.undefined
     (/=) = P.undefined
 
-instance Bits (SecureList a) where
+instance Bits (SecureNum a) where
     (.&.) = P.zipWith P.$ Gate AND
     (.|.) = P.zipWith P.$ Gate OR
     xor = P.zipWith P.$ Gate XOR
