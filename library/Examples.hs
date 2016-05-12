@@ -207,7 +207,7 @@ levenshtein2 sa sb = last $ foldl transform (map O.num2Const [0..length sa]) sb
     where
         transform xs@(x:xs') c = scanl compute (x+(O.num2Const 1)) (zip3 sa xs xs') 
             where
-                compute z (c', x, y) = foldl1 cmp [y+(O.num2Const 1), z+(O.num2Const 1), x + (extendBy 15 $ [O.b_xor c' c])]
+                compute z (c', x, y) = foldl1 cmp [y+(O.num2Const 1), z+(O.num2Const 1), x + (extendBy 7 $ [O.b_xor c' c])]
                     where
                         cmp a b = O.if' (a O.<. b) a b
 
