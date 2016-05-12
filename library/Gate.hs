@@ -1,5 +1,6 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE BangPatterns #-}
 module Gate where
 import Utils
 import Types
@@ -8,6 +9,7 @@ import qualified Network.Socket.ByteString as SBS
 import qualified Data.ByteString as BS
 import Data.Bits
 import Data.List
+import Control.Monad
 
 data KeyContext = AES FixedKey
                 | RAND Key
@@ -136,11 +138,6 @@ countGates :: Int -> SecureFunction Int -> IO()
 countGates inputs func = do
     let inp = map (const $ Input 0) [0..inputs-1]
     let tree = func inp inp
-    let lazyTree = map (process Nothing []) tree
-    res <- eval lazyTree
-    print mapM id res
-    where 
-        eval [] = return []
-        eval [!x:xs] = do
-            res <- x
-            return [x, eval xs]
+    print $ head tree
+    res <- process Nothing [] $ head tree
+    print res
