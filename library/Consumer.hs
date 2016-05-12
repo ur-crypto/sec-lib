@@ -11,7 +11,7 @@ import qualified Data.ByteString as B
 processGates :: Socket -> Key -> [CKey] -> IO [CKey]
 processGates soc fkeystr gates = do
     let fkey = initFixedKey fkeystr
-    res <- mapM (process soc [AES fkey]) gates
+    res <- mapM (process (Just soc) [AES fkey]) gates
     --print res
     return res
 

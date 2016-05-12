@@ -13,7 +13,7 @@ import Control.Concurrent
 processGates :: Socket -> Key -> Key -> [PKey] -> IO [PKey]
 processGates soc rkey fkeystr gates = do
     let fkey = initFixedKey fkeystr
-    res <- mapM (process soc [AES fkey, RAND rkey]) gates
+    res <- mapM (process (Just soc) [AES fkey, RAND rkey]) gates
     --print res
     return res
 

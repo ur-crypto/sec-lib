@@ -7,6 +7,7 @@ import Network.Socket
 import qualified Network.Socket.ByteString as SBS
 import qualified Data.ByteString as BS
 import Data.Bits
+import Data.List
 
 data KeyContext = AES FixedKey
                 | RAND Key
@@ -14,10 +15,9 @@ data KeyContext = AES FixedKey
 type GateCounter = [Int]
 
 class LocalValue v where
-    gateHandler :: Socket -> [KeyContext] -> GateType -> v -> v -> IO (Node v)
+    gateHandler :: Maybe Socket -> [KeyContext] -> GateType -> v -> v -> IO (Node v)
     notHandler :: Node v -> IO (Node v)
-    process :: Socket -> [KeyContext] -> Node v -> IO (Node v)
-    process soc fkeys (Gate BIJ k1 k2) = process soc fkeys (Not (Gate XOR k1 k2))
+    process :: Maybe Socket -> [KeyContext] -> Node v -> IO (Node v)
     process soc fkeys (Gate ty k1 k2) = do
         x <- process soc fkeys k1
         y <- process soc fkeys k2
@@ -60,7 +60,7 @@ instance LocalValue (Key, Key) where
         let o1 = BS.pack $ BS.zipWith xor a0 b0 
             o2 = BS.pack $ BS.zipWith xor a0 b1 in
         return (Input (o1, o2))
-    gateHandler soc [AES fkey,RAND rkey] ty a b = do
+    gateHandler (Just soc) [AES fkey,RAND rkey] ty a b = do
         ok <- genKeyPair rkey
         let o = (Input ok)
         let tt = getTT ty o (Input a) (Input b)
@@ -82,6 +82,7 @@ instance LocalValue (Key, Key) where
             sendInfo (TruthTable r1 r2 r3 r4) = do
                 outkeys <- shuffle $ map (encOutKey fkey) [r1, r2, r3, r4]
                 SBS.sendMany soc outkeys
+    gateHandler Nothing _ _ _ _ = error "Needs a socket"
 
 instance LocalValue Key where
     notHandler (Input a) = return $ Input a
@@ -89,7 +90,7 @@ instance LocalValue Key where
     notHandler _ = error "Should not recieve Gate"
     gateHandler _ _ XOR a b =
         return $ Input $ BS.pack $ BS.zipWith xor a b
-    gateHandler soc [AES fkey] _ x y = do
+    gateHandler (Just soc) [AES fkey] _ x y = do
         tt <- getTT
         return $ processTT tt x y
         where
@@ -108,6 +109,7 @@ instance LocalValue Key where
                 corrKey Nothing = False
                 keyList =  [(k1, k2, a), (k1, k2, b), (k1, k2, c), (k1, k2, d)] 
             processTT  _ _ _ = error "Passing gate to processTT"
+    gateHandler Nothing _ _ _ _ = error "Needs a socket"
 
 incCounter :: Int -> GateCounter -> GateCounter
 incCounter i =
@@ -115,7 +117,7 @@ incCounter i =
 instance LocalValue GateCounter where
     notHandler (Input gc) = return $ Input $ incCounter 5 gc
     notHandler other = return other
-    gateHandler _ _ ty gc1 gc2 =
+    gateHandler Nothing _ ty gc1 gc2 =
         let gc = zipWith (+) gc1 gc2 in
         return $ Input $ incCounter (type2Int ty) gc
         where
@@ -125,12 +127,12 @@ instance LocalValue GateCounter where
             type2Int BIJ = 3
             type2Int NAND = 4
 
-countGates :: Socket -> Int -> SecureFunction GateCounter -> IO()
-countGates soc inputs func = do
+countGates :: Int -> SecureFunction GateCounter -> IO()
+countGates inputs func = do
     let counters = map (const (Input [0,0,0,0,0,0])) [0..inputs-1]
     let tree = func counters counters
-    res <- mapM (process soc []) tree
-    print $ foldl combine [0,0,0,0,0,0] res
+    res <- mapM (process Nothing []) tree
+    print $ foldl' combine [0,0,0,0,0,0] res
     where
         combine acc (Input x) = zipWith (+) acc x
         combine acc _ = acc

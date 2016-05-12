@@ -27,7 +27,7 @@ doTest (csoc, psoc) (inputProduce, inputConsume) test = do
 
 printTest :: FiniteBits b => (Socket, Socket) -> (b, b) -> (forall a. SecureFunction a) -> IO ()
 printTest (csoc, psoc) (a, b) test = do
-    countGates csoc (finiteBitSize a) test
+    countGates (finiteBitSize a) test
     conOutHandle <- asyncBound $ C.doWithSocket csoc (a, b) test
     proOutHandle <- asyncBound $ P.doWithSocket psoc (a, b) test
     conOut <- wait conOutHandle
