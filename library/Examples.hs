@@ -38,8 +38,8 @@ test64 = 395648674974903
 --andShift :: SecureFunction a
 --andShift xs ys = (O.shiftL 1 xs) O..&. ys
 
-numCmps :: [Node a] -> [Node a] -> Node a
-numCmps as bs = Constant False
+numCmps :: [Node a] -> [Node a] -> [Node a]
+numCmps as bs = (Constant False):[]
 {-numCmps as bs = imp as bs
     where
     imp :: [Node a] -> [Node a] -> Node a
@@ -99,11 +99,28 @@ ourBool (n1:n1s) = case n1 of
 ourBool [] = []
 
 {-
+editDist :: SecureFunction a
+editDist xs ys =  let dist = initDist (length ys) in
+                         editDistVec [Constant False] [Constant False] dist xs ys
+
+initDist :: Num -> [[Node a]]
+initDist a = case (a>1) of
+                 (True)     ->    let dist = initDist(a-1) in 
+                                      dist++[bitsToBools (fromIntegral (a :: Int) :: Int8))]
+                 (False)    ->    [Constant True]
+
+editDistVec :: [Node a] -> [Node a] -> [[Node a]] -> SecureFunction a
+editDist d0 d1 (d:ds) (x:xs) (y:ys) = let v1 = ((xor x y)+d0) in
+                                      let v2 = (if' (numCmp d v1) v1 d) in
+                                      let v3 = (if' (numCmp d1 v2) v2 d1) in
+                                          editDist 
+-}
+
 editDistance :: SecureFunction a 
 editDistance xs ys = table ! (m,n)
     where
-    m     = 8 :: Int
-    n     = 8 :: Int
+    m     = 7 :: Int
+    n     = 7 :: Int
     --(m,n) = (length xs, length ys)
     x     = array (1,m) (zip [1..] xs)
     y     = array (1,n) (zip [1..] ys)
@@ -118,8 +135,8 @@ editDistance xs ys = table ! (m,n)
     dist (0,j) = ourBool (bitsToBools (fromIntegral (j :: Int) :: Int8))
     dist (i,0) = ourBool (bitsToBools (fromIntegral (i :: Int) :: Int8))
     dist (i,j) = let (li,(carry,intermed)) = addIntFP 4 (length (table ! (i-1,j-1))) (table ! (i-1,j-1)) 1 ((Constant True):[]) in 
-                     let result = ifThenElse (numCmps (table ! (i-1,j)) (table ! (i,j-1))) (table ! (i,j-1))
-                                          (ifThenElse (numCmps (table ! (i-1,j-1)) ((carry:[])++intermed)) ((carry:[])++intermed) (table ! (i-1,j))) in
+                     let result = if' (numCmps (table ! (i-1,j)) (table ! (i,j-1))) (table ! (i,j-1))
+                                          (if' (numCmps (table ! (i-1,j-1)) ((carry:[])++intermed)) ((carry:[])++intermed) (table ! (i-1,j))) in
                               let (l1,(b1,a1)) = addIntFP 4 (length result) result 1 ((Constant True):[]) in
                               (b1:[])++a1
                      -- ifThenElses (numCmps ((b1:[])++a1) ((b2:[])++a2)) ((b2:[])++a2) ((b1:[])++a1)
@@ -132,7 +149,6 @@ editDistance xs ys = table ! (m,n)
 -- minimum [table ! (i-1,j) + 1, table ! (i,j-1) + 1,
 --        if x ! i == y ! j then table ! (i-1,j-1) else 1 + table ! (i-1,j-1)]
 
--}
 
 ueand :: [Node a] -> [Node a] -> [Node a]
 ueand (n1:n1s) [] = let reslt = ueand n1s [] in
