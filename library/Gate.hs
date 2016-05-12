@@ -125,3 +125,13 @@ instance LocalValue GateCounter where
             type2Int BIJ = 3
             type2Int NAND = 4
 
+countGates :: Socket -> Int -> SecureFunction GateCounter -> IO()
+countGates soc inputs func = do
+    let counters = map (const (Input [0,0,0,0,0,0])) [0..inputs-1]
+    let tree = func counters counters
+    res <- mapM (process soc []) tree
+    print $ foldl combine [0,0,0,0,0,0] res
+    where
+        combine acc (Input x) = zipWith (+) acc x
+        combine acc _ = acc
+

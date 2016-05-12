@@ -6,6 +6,7 @@ import qualified Consumer as C
 import qualified Producer as P
 import Control.Concurrent.Async
 import Types
+import Gate
 import Data.Bits
 
 doTest :: FiniteBits b => (Socket, Socket) -> (b, b) -> (forall a. SecureFunction a) -> IO [Bool]
@@ -26,6 +27,7 @@ doTest (csoc, psoc) (inputProduce, inputConsume) test = do
 
 printTest :: FiniteBits b => (Socket, Socket) -> (b, b) -> (forall a. SecureFunction a) -> IO ()
 printTest (csoc, psoc) (a, b) test = do
+    countGates csoc (finiteBitSize a) test
     conOutHandle <- asyncBound $ C.doWithSocket csoc (a, b) test
     proOutHandle <- asyncBound $ P.doWithSocket psoc (a, b) test
     conOut <- wait conOutHandle
