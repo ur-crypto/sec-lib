@@ -7,16 +7,17 @@ import Data.Bits
 import Prelude hiding ((&&), (||), not)
 
 --Gate Macros
+
 (&&) :: Node a -> Node a -> Node a
-(&&) = Gate AND
+(&&) = processConstant AND
 (||) :: Node a -> Node a -> Node a
-(||) = Gate OR
+(||) = processConstant OR
 b_xor :: Node a -> Node a -> Node a
-b_xor = Gate XOR
+b_xor = processConstant XOR
 nand :: Node a -> Node a -> Node a
-nand = Gate NAND
+nand = processConstant NAND
 bij :: Node a -> Node a -> Node a
-bij = Gate BIJ
+bij = processConstant BIJ
 not :: Node a -> Node a
 not = Not
 
