@@ -136,12 +136,11 @@ countGates :: Int -> SecureFunction Int -> IO()
 countGates inputs func = do
     let inp = map (const $ Input 0) [0..inputs-1]
     let tree = func inp inp
-    res <- mapM (process Nothing []) tree
-    print res
-    
-    --res <- mapM (process Nothing []) tree
-    --print $ foldl' combine [0,0,0,0,0,0] res
-    where
-        combine acc (Input x) = zipWith (+) acc x
-        combine acc _ = acc
-
+    let lazyTree = map (process Nothing []) tree
+    res <- eval lazyTree
+    print mapM id res
+    where 
+        eval [] = return []
+        eval [!x:xs] = do
+            res <- x
+            return [x, eval xs]
