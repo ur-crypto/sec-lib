@@ -7,6 +7,10 @@ import Data.ByteString as BS
 import qualified Prelude as P
 
 type Key = BS.ByteString
+type CKey = Node Key
+type CTT = TruthTable Key
+type PKey = Node (Key, Key)
+type PTT = TruthTable (Key, Key, Key)
 
 type SecureFunction a = SecureNum a -> SecureNum a -> SecureNum a
 

@@ -26,6 +26,7 @@ library
         Examples
         TestUtils
         Ops
+        Gate
     build-depends:
         base ==4.8.*,
         HsOpenSSL,
