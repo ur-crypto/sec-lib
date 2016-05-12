@@ -28,6 +28,12 @@ main = do
 
 spec :: (Socket, Socket) -> Spec
 spec (csoc, psoc)=  do
+{-
+    it "Tests Edit Distance" $ do
+        let(x,y) = (10::Int16, 20::Int16) 
+        ans <- doTest (csoc, psoc) (x, y) levenshtein2
+        ans `shouldBe` (bits2Bools $ boolsEditDistance (bits2Bools x) (bits2Bools y))
+-}
     it "Num Eq 16 True" $ boolTest numEq test16 test16 True
     it "Num Eq 16 True" $ boolTest numEq test16 test16 True
     it "Num Eq 16 False" $ boolTest numEq test16 (test16-1) False
@@ -60,14 +66,14 @@ spec (csoc, psoc)=  do
         hamTest  :: FiniteBits b => (forall a. SecureFunction a) -> b -> b -> Int8 -> Expectation
         hamTest test inputNum inputNum2 expectedNumber = do 
             ourAnswers <- (doTest (csoc, psoc) (inputNum, inputNum2) test) 
-            let expectAnswers = (bitsToBools expectedNumber)
+            let expectAnswers = (bits2Bools expectedNumber)
             ourAnswers `shouldBe` expectAnswers
      
 
         listTest  :: FiniteBits b => (forall a. SecureFunction a) -> b -> b -> b -> Expectation
         listTest test inputNum inputNum2 expectedNumber = do 
             ourAnswers <- (doTest (csoc, psoc) (inputNum, inputNum2) test) 
-            let expectAnswers = (bitsToBools expectedNumber)
+            let expectAnswers = (bits2Bools expectedNumber)
             ourAnswers `shouldBe` expectAnswers
 
         {-
@@ -75,7 +81,7 @@ spec (csoc, psoc)=  do
         exhaustiveTest test equivalent = do
           let nums = [minBound :: Int8 .. maxBound :: Int8]
           let numCombos = [ (x, y) | x<-nums, y<-nums ] --idk how this works but it sure is pretty
-          let numAnswers = map (\xt -> case xt of (x, y) -> bitsToBools $ (equivalent) x y) numCombos
+          let numAnswers = map (\xt -> case xt of (x, y) -> bits2Bools $ (equivalent) x y) numCombos
           ourAnswers <- mapM (\x -> doTest (csoc, psoc) x test) numCombos
           ourAnswers `shouldBe` numAnswers
         -}

@@ -48,11 +48,14 @@ ifThenElse bool tb fb =
     let nbool = Gate NAND bool bool in
     ((bool && tb) || (nbool && fb))
 
-if' :: SecureList a -> SecureList a -> SecureList a -> SecureList a
+if' :: SecureNum a -> SecureNum a -> SecureNum a -> SecureNum a
 if' bools= zipWith (ifThenElse (foldl1 (||) bools))
 
-num2Const :: Int -> SecureList a
-num2Const n = map Constant (bitsToBools n)
+num2Const :: Int -> SecureNum a
+num2Const n = map Constant (bits2Bools n)
+
+extendBy :: Int -> SecureNum a -> SecureNum a
+extendBy n x = (map (\_->Constant False) [0..n-1]) ++ x
 
 
 --add def
@@ -89,5 +92,5 @@ subCompute (p1:p1s) (g1:g1s) =
           (len+1,((Gate XOR g1 (carry && p1)),(((Gate XOR p1 carry):[])++prevcarry)))
 subCompute _ _ = error "unbalanced inputs"
 
-instance Num (SecureList a) where
+instance Num (SecureNum a) where
     (+) = addInt

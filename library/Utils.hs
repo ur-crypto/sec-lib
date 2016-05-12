@@ -91,11 +91,11 @@ printKey (Just False) key = putStrLn $ "0:\t" ++ keyString key
 printKey (Just True) key = putStrLn $ "1:\t" ++ keyString key
 printKey Nothing key = putStrLn $ "?:\t" ++ keyString key
 
-bitsToBools :: FiniteBits a => a -> [Bool]
-bitsToBools i = reverse $ map (testBit i) [0..((finiteBitSize i) - 1) :: Int]
+bits2Bools :: FiniteBits a => a -> [Bool]
+bits2Bools i = reverse $ map (testBit i) [0..((finiteBitSize i) - 1) :: Int]
 
 bsToBools :: BS.ByteString -> [Bool]
-bsToBools bs = concatMap bitsToBools $ BS.unpack bs
+bsToBools bs = concatMap bits2Bools $ BS.unpack bs
 
 numBytes :: FiniteBits a => a -> Int
 numBytes n = (finiteBitSize n) `quot` 8
