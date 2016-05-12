@@ -134,7 +134,8 @@ instance LocalValue Int where
 
 countGates :: Int -> SecureFunction Int -> IO()
 countGates inputs func = do
-    let tree = func [Input 0] [Input 0]
+    let inp = map (const $ Input 0) [0..inputs-1]
+    let tree = func inp inp
     res <- mapM (process Nothing []) tree
     print res
     
