@@ -16,6 +16,8 @@ test8 = 35
 testb8 :: Int8
 testb8 = 74
 
+test4 = (Constant True):(Constant True):(Constant False):(Constant True):[]
+testb4 = (Constant True):(Constant False):(Constant True):(Constant True):[]
 
 test16 :: Int16
 test16 = 125
