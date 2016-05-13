@@ -21,34 +21,9 @@ class LocalValue v where
     notHandler :: Node v -> IO (Node v)
     process :: Maybe Socket -> [KeyContext] -> Node v -> IO (Node v)
     process soc fkeys (Gate ty k1 k2) = do
-        x <- process soc fkeys k1
-        y <- process soc fkeys k2
-        case (x, y) of
-            ((Input a), (Input b)) -> 
-                gateHandler soc fkeys ty a b
-            ((Input _), (Constant b)) ->
-                processConstant ty x b
-            ((Constant a), (Input _)) ->
-                processConstant ty y a
-            ((Constant a), (Constant b)) ->
-                return $ case ty of
-                    AND -> Constant (a && b)
-                    OR -> Constant (a || b)
-                    XOR -> Constant (xor a b)
-                    NAND -> Constant (not (a && b))
-                    BIJ -> Constant (not (xor a b))
-            (_, _) -> error "process gate returning wrong value"
-        where
-        processConstant AND _ False = return $ Constant False
-        processConstant AND key True = return key
-        processConstant OR key False = return key
-        processConstant OR _ True = return $ Constant True
-        processConstant XOR key False = return key
-        processConstant XOR key True = process soc fkeys (Not key)
-        processConstant NAND _ False = return $ Constant True
-        processConstant NAND key True = return key
-        processConstant BIJ key False = process soc fkeys (Not key)
-        processConstant BIJ key True = return key
+        (Input x) <- process soc fkeys k1
+        (Input y) <- process soc fkeys k2
+        gateHandler soc fkeys ty x y
     process soc fkeys (Not node) = do
         procNode <- process soc fkeys node
         notHandler procNode
@@ -116,6 +91,7 @@ instance LocalValue Key where
 incCounter :: Int -> GateCounter -> GateCounter
 incCounter i =
     zipWith (\ind val -> if ind == i then val + 1 else val) [0..]
+
 instance LocalValue GateCounter where
     notHandler (Input gc) = return $ Input $ incCounter 5 gc
     notHandler other = return other
