@@ -63,7 +63,7 @@ extendBy n x = (map (\_->Constant False) [0..n-1]) ++ x
 addInt :: [Node a1] -> [Node a1] -> [Node a1]
 addInt m n = let lenm = length m
                  lenn = length n in
-                       let (_,(_,subTotal)) =  addIntFP 16 lenm m lenn n in 
+                       let (_,(_,subTotal)) =  addIntFP 4 lenm m lenn n in 
                            subTotal
 
 addIntFP :: Int -> Int -> [Node a1] -> Int -> [Node a1] -> (Int, (Node a1, [Node a1]))
