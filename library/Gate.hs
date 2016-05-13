@@ -110,9 +110,9 @@ instance LocalValue Int where
     notHandler other = return other
     gateHandler Nothing _ _ ai bi = return $ Input $ ai + bi + 1
 
-countGates :: Int -> SecureFunction Int -> IO()
+countGates :: Int -> SecureFunction GateCounter -> IO()
 countGates inputs func = do
-    let inp = map (const $ Input 0) [0..inputs-1]
+    let inp = map (const $ Input [0,0,0,0,0,0]) [0..inputs-1]
     let tree = func inp inp
-    res <- process Nothing [] $ head tree
-    print res
+    res <- mapM (process Nothing []) tree
+    print $ foldl' (\acc x -> case x of (Input a) -> zipWith (+) acc a) [0,0,0,0,0,0] res
