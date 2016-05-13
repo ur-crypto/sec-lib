@@ -115,4 +115,7 @@ countGates inputs func = do
     let inp = map (const $ Input [0,0,0,0,0,0]) [0..inputs-1]
     let tree = func inp inp
     res <- mapM (process Nothing []) tree
-    print $ foldl' (\acc x -> case x of (Input a) -> zipWith (+) acc a) [0,0,0,0,0,0] res
+    print $ foldl' combine [0,0,0,0,0,0] res
+        where
+            combine acc (Input a) = zipWith (+) acc a
+            combine acc _ = acc
