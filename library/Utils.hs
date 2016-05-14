@@ -1,16 +1,16 @@
 module Utils where
-import Data.Word
-import Data.Bits
-import qualified Data.ByteString as BS
+import           Control.Monad
+import           Crypto.Cipher.AES
+import           Crypto.Cipher.Types
+import           Crypto.Error
+import           Data.Array.IO
+import           Data.Bits
+import qualified Data.ByteString         as BS
 import qualified Data.ByteString.Builder as D
-import Crypto.Cipher.AES
-import Crypto.Cipher.Types
-import Crypto.Error
-import Text.Bytedump
-import System.Entropy
-import System.Random
-import Data.Array.IO
-import Control.Monad
+import           Data.Word
+import           System.Entropy
+import           System.Random
+import           Text.Bytedump
 
 -- In Bytes
 --
@@ -49,7 +49,7 @@ genKeyPair rkey = do
     let k10 = BS.concat [k1, zeros]
     let k20 = BS.concat [k2, zeros]
     return (k10, k20)
-    
+
 getAESKeys :: BS.ByteString -> BS.ByteString -> (AES128, AES128)
 getAESKeys a b = (throwCryptoError $ cipherInit a :: AES128, throwCryptoError $ cipherInit b :: AES128)
 
@@ -71,11 +71,11 @@ shuffle xs = do
     newArray n xs =  newListArray (1,n) xs
 
 encOutKey :: AES128 -> (BS.ByteString, BS.ByteString, BS.ByteString) -> BS.ByteString
-encOutKey fkey (a, b, o) = 
+encOutKey fkey (a, b, o) =
     BS.pack $ BS.zipWith (xor) o . BS.pack $ BS.zipWith (xor) (ecbEncrypt fkey a) (ecbEncrypt fkey b)
 
 decOutKey :: AES128 -> (BS.ByteString, BS.ByteString, BS.ByteString) -> Maybe BS.ByteString
-decOutKey fkey ktup = 
+decOutKey fkey ktup =
     let check = encOutKey fkey ktup in
     let (_, z) = BS.splitAt keyLength check in
     if z == zeros
@@ -98,4 +98,3 @@ bsToBools bs = concatMap bits2Bools $ BS.unpack bs
 
 numBytes :: FiniteBits a => a -> Int
 numBytes n = (finiteBitSize n) `quot` 8
-
