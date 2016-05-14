@@ -18,6 +18,23 @@ type GateCounter = [Int]
 class LocalValue v where
     gateHandler :: Maybe Socket -> [KeyContext] -> GateType -> v -> v -> IO (Node v)
     notHandler :: Node v -> IO (Node v)
+    processConstant :: GateType -> Node v -> Node v -> Node v
+    processConstant ty (Constant a) (Constant b) =
+        Constant  $ case ty of
+            AND -> a && b
+            OR -> a || b
+            XOR -> if a then not b else b
+            BIJ -> not $ if a then not b else b
+            NAND -> not $ (&&) a b
+    processConstant ty a (Constant b) =
+        case ty of
+            AND -> if b then a else Constant False
+            OR -> if b then Constant True else a
+            XOR -> if b then Not a else a
+            BIJ -> if b then a else Not a
+            NAND -> if b then Not a else Constant True
+    processConstant ty (Constant b) a = processConstant ty a (Constant b)
+    processConstant ty a b = Gate ty a b
     process :: Maybe Socket -> [KeyContext] -> Node v -> IO (Node v)
     process soc fkeys (Gate ty !k1 !k2) = do
         (Input x) <- process soc fkeys k1
