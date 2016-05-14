@@ -29,7 +29,7 @@ library
         Gate
     build-depends:
         base ==4.8.*,
-        HsOpenSSL,
+        entropy,
         bytedump,
         bytestring,
         binary,

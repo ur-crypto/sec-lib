@@ -1,15 +1,14 @@
+{-# LANGUAGE BangPatterns         #-}
+{-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE TypeSynonymInstances #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE BangPatterns #-}
 module Gate where
-import Utils
-import Types
-import Network.Socket
+import           Data.Bits
+import qualified Data.ByteString           as BS
+import           Data.List
+import           Network.Socket
 import qualified Network.Socket.ByteString as SBS
-import qualified Data.ByteString as BS
-import Data.Bits
-import Data.List
-import Control.Monad
+import           Types
+import           Utils
 
 data KeyContext = AES FixedKey
                 | RAND Key
@@ -20,7 +19,7 @@ class LocalValue v where
     gateHandler :: Maybe Socket -> [KeyContext] -> GateType -> v -> v -> IO (Node v)
     notHandler :: Node v -> IO (Node v)
     process :: Maybe Socket -> [KeyContext] -> Node v -> IO (Node v)
-    process soc fkeys (Gate ty k1 k2) = do
+    process soc fkeys (Gate ty !k1 !k2) = do
         (Input x) <- process soc fkeys k1
         (Input y) <- process soc fkeys k2
         gateHandler soc fkeys ty x y
@@ -34,7 +33,7 @@ instance LocalValue (Key, Key) where
     notHandler (Constant l) = return $ Constant $ not l
     notHandler _ = error "Should not recieve Gate"
     gateHandler _ _ XOR (a0, a1) (b0, b1) =
-        let o1 = BS.pack $ BS.zipWith xor a0 b0 
+        let o1 = BS.pack $ BS.zipWith xor a0 b0
             o2 = BS.pack $ BS.zipWith xor a0 b1 in
         return (Input (o1, o2))
     gateHandler (Just soc) [AES fkey,RAND rkey] ty a b = do
@@ -84,7 +83,7 @@ instance LocalValue Key where
                 corrKey :: Maybe Key -> Bool
                 corrKey (Just _) = True
                 corrKey Nothing = False
-                keyList =  [(k1, k2, a), (k1, k2, b), (k1, k2, c), (k1, k2, d)] 
+                keyList =  [(k1, k2, a), (k1, k2, b), (k1, k2, c), (k1, k2, d)]
             processTT  _ _ _ = error "Passing gate to processTT"
     gateHandler Nothing _ _ _ _ = error "Needs a socket"
 

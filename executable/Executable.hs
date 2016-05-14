@@ -1,21 +1,21 @@
-import Prelude 
-import qualified Consumer as C
-import qualified Producer as P
-import Control.Concurrent.Async
-import Ops
-import Examples
-import TestUtils
-import System.Environment
-import Data.Int
+import qualified Consumer                 as C
+import           Control.Concurrent.Async
+import           Data.Int
+import           Examples
+import           Ops
+import           Prelude
+import qualified Producer                 as P
+import           System.Environment
+import           TestUtils
 
 usage :: IO()
 usage = putStrLn "Enter producer or consumer"
 
 doArgs :: [String] -> IO()
-doArgs ("producer":_) = do 
-    res <- P.doWithoutSocket (test8, testb8) edist 
+doArgs ("producer":_) = do
+    res <- P.doWithoutSocket (test8, testb8) edist
     print res
-doArgs ("consumer":_) = do 
+doArgs ("consumer":_) = do
     res <- C.doWithoutSocket (test8, testb8) edist
     print res
 doArgs ("both":_) = do
@@ -23,7 +23,7 @@ doArgs ("both":_) = do
     hpsoc <- async P.getSocket
     csoc <- wait hcsoc
     psoc <- wait hpsoc
-    printTest (csoc, psoc) (1::Int8,4::Int8) (+)
+    printTest (csoc, psoc) (1::Int8,3::Int8) levenshtein2
 doArgs _ = usage
 
 main :: IO()

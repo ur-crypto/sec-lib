@@ -1,6 +1,4 @@
 module Utils where
-import OpenSSL.Random
-import OpenSSL
 import Data.Word
 import Data.Bits
 import qualified Data.ByteString as BS
@@ -9,6 +7,7 @@ import Crypto.Cipher.AES
 import Crypto.Cipher.Types
 import Crypto.Error
 import Text.Bytedump
+import System.Entropy
 import System.Random
 import Data.Array.IO
 import Control.Monad
@@ -35,18 +34,18 @@ zeroBuilder = D.byteString zeros
 
 genFixedKey :: IO BS.ByteString
 genFixedKey = do
-    k <- randBytes cipherSize
+    k <- getEntropy cipherSize
     return k
 
 genRootKey :: IO BS.ByteString
 genRootKey = do
-    k <- randBytes keyLength
+    k <- getEntropy keyLength
     return k
 
 genKeyPair :: BS.ByteString -> IO (BS.ByteString, BS.ByteString)
-genKeyPair rkey = withOpenSSL $ do
-    k1 <- randBytes keyLength
-    let k2 = BS.pack $ BS.zipWith (xor) k1 rkey
+genKeyPair rkey = do
+    k1 <- getEntropy keyLength
+    let k2 = BS.pack $ BS.zipWith xor k1 rkey
     let k10 = BS.concat [k1, zeros]
     let k20 = BS.concat [k2, zeros]
     return (k10, k20)

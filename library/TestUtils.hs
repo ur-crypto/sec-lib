@@ -1,13 +1,13 @@
 {-# LANGUAGE RankNTypes #-}
 module TestUtils where
 
-import Network.Socket
-import qualified Consumer as C
-import qualified Producer as P
-import Control.Concurrent.Async
-import Types
-import Gate
-import Data.Bits
+import qualified Consumer                 as C
+import           Control.Concurrent.Async
+import           Data.Bits
+import           Gate
+import           Network.Socket
+import qualified Producer                 as P
+import           Types
 
 doTest :: FiniteBits b => (Socket, Socket) -> (b, b) -> (forall a. SecureFunction a) -> IO [Bool]
 doTest (csoc, psoc) (inputProduce, inputConsume) test = do

@@ -63,4 +63,3 @@ instance Bits (SecureNum a) where
     testBit = P.undefined
     bit a = P.undefined
     popCount = P.undefined
-

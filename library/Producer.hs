@@ -28,7 +28,7 @@ getSocket = do
     return soc
 
 sendList :: Socket -> [(Key, Key)] -> [Bool] -> IO()
-sendList _ [] [] = return () 
+sendList _ [] [] = return ()
 sendList soc ((kp0, kp1):kps) (b:bs)= do
     if b
         then SBS.sendAll soc kp1

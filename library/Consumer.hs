@@ -1,19 +1,17 @@
 {-# LANGUAGE MultiWayIf #-}
 module Consumer where
-import Utils
-import Types
-import Network.Socket
-import Data.Bits
-import Gate
+import           Data.Bits
+import qualified Data.ByteString           as B
+import           Gate
+import           Network.Socket
 import qualified Network.Socket.ByteString as SBS
-import qualified Data.ByteString as B
+import           Types
+import           Utils
 
 processGates :: Socket -> Key -> [CKey] -> IO [CKey]
 processGates soc fkeystr gates = do
     let fkey = initFixedKey fkeystr
-    res <- mapM (process (Just soc) [AES fkey]) gates
-    --print res
-    return res
+    mapM (process (Just soc) [AES fkey]) gates
 
 getSocket :: IO Socket
 getSocket = do
@@ -59,4 +57,3 @@ doWithoutSocket input test = do
     ans <- doWithSocket soc input test
     close soc
     return ans
-
