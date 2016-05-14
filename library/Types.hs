@@ -1,10 +1,10 @@
+{-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE TypeSynonymInstances #-}
-{-# LANGUAGE FlexibleInstances #-}
 module Types where
 
-import Data.Bits
-import Data.ByteString as BS
-import qualified Prelude as P
+import           Data.Bits
+import           Data.ByteString as BS
+import qualified Prelude         as P
 
 type Key = BS.ByteString
 type CKey = Node Key
@@ -63,4 +63,3 @@ instance Bits (SecureNum a) where
     testBit = P.undefined
     bit a = P.undefined
     popCount = P.undefined
-

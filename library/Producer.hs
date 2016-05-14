@@ -1,13 +1,13 @@
 {-# LANGUAGE MultiWayIf #-}
 module Producer where
-import Utils
-import Types
-import Gate
-import Network.Socket
+import           Control.Concurrent
+import           Data.Bits
+import qualified Data.ByteString           as BS
+import           Gate
+import           Network.Socket
 import qualified Network.Socket.ByteString as SBS
-import qualified Data.ByteString as BS
-import Data.Bits
-import Control.Concurrent
+import           Types
+import           Utils
 
 
 processGates :: Socket -> Key -> Key -> [PKey] -> IO [PKey]
@@ -28,7 +28,7 @@ getSocket = do
     return soc
 
 sendList :: Socket -> [(Key, Key)] -> [Bool] -> IO()
-sendList _ [] [] = return () 
+sendList _ [] [] = return ()
 sendList soc ((kp0, kp1):kps) (b:bs)= do
     if b
         then SBS.sendAll soc kp1
