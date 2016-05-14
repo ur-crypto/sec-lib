@@ -1,7 +1,9 @@
-{-# LANGUAGE MultiWayIf #-}
+{-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE MultiWayIf           #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 module Consumer where
 import           Data.Bits
-import qualified Data.ByteString           as B
+import qualified Data.ByteString           as BS
 import           Gate
 import           Network.Socket
 import qualified Network.Socket.ByteString as SBS
@@ -12,6 +14,40 @@ processGates :: Socket -> Key -> [CKey] -> IO [CKey]
 processGates soc fkeystr gates = do
     let fkey = initFixedKey fkeystr
     mapM (process (Just soc) [AES fkey]) gates
+
+decTruthTable :: FixedKey -> Key -> Key -> CTT -> Key
+decTruthTable fkey k1 k2 (TruthTable o00 o01 o10 o11) =
+  let k1' = BS.last k1
+      k2' = BS.last k2 in
+  let o = case (k1', k2') of
+        (0, 0) -> o00
+        (0, 1) -> o01
+        (1, 0) -> o10
+        (1, 1) -> o11
+        _ -> error $ "Improper decoding of: " ++ show k1' ++ ", " ++ show k2'
+        in
+  encOutKey fkey (k1, k2, o)
+
+instance LocalValue Key where
+    notHandler (Input a) = return $ Input a
+    notHandler (Constant l) = return $ Constant $ not l
+    notHandler _ = error "Should not recieve Gate"
+    gateHandler _ _ XOR a b = do
+        let o = BS.pack $ BS.zipWith xor a b
+        return $ Input o
+    gateHandler (Just soc) [AES fkey] ty x y = do
+        tt <- getTT
+        let o = decTruthTable fkey x y tt
+        return $ Input $ o
+        where
+            getTT = do
+                byteTT <- SBS.recv soc (4 * cipherSize)
+                let (x1, r1) = BS.splitAt cipherSize byteTT
+                let (x2, r2) = BS.splitAt cipherSize r1
+                let (x3, x4) = BS.splitAt cipherSize r2
+                return $ TruthTable x1 x2 x3 x4
+    gateHandler Nothing _ _ _ _ = error "Needs a socket"
+    gateHandler _ _ _ _ _ = error "Needs Correct Keys"
 
 getSocket :: IO Socket
 getSocket = do
@@ -46,7 +82,7 @@ doWithSocket soc (produceInput, consumeInput) test = do
             return $ if
                 | k == o0 -> False
                 | k == o1 -> True
-                | otherwise -> error "Incorrect answer found"
+                | otherwise -> error $ "Incorrect answer found: " ++ show k ++ show o0 ++ show o1
         receiveNodes (Constant k) = return k
         receiveNodes (Not k) = receiveNodes k
         receiveNodes x = error "Should not be receiving gate"

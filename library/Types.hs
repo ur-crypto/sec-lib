@@ -27,7 +27,7 @@ data Node a    = Gate GateType (Node a) (Node a)
 
 type SecureNum a = [Node a]
 
-data TruthTable a = TruthTable a a a a
+data TruthTable a = TruthTable a a a a deriving(P.Show)
 
 instance P.Eq (Node a) where
     (==) = P.undefined
