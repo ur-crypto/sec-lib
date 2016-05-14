@@ -9,15 +9,15 @@ import           Utils
 --Gate Macros
 
 (&&) :: Node a -> Node a -> Node a
-(&&) = processConstant AND
+(&&) = Gate AND
 (||) :: Node a -> Node a -> Node a
-(||) = processConstant OR
+(||) = Gate OR
 b_xor :: Node a -> Node a -> Node a
-b_xor = processConstant XOR
+b_xor = Gate XOR
 nand :: Node a -> Node a -> Node a
-nand = processConstant NAND
+nand = Gate NAND
 bij :: Node a -> Node a -> Node a
-bij = processConstant BIJ
+bij = Gate BIJ
 not :: Node a -> Node a
 not = Not
 
