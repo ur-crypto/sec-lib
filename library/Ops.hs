@@ -1,10 +1,10 @@
+{-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE TypeSynonymInstances #-}
-{-# LANGUAGE FlexibleInstances #-}
 module Ops where
-import Types
-import Utils
-import Data.Bits
-import Prelude hiding ((&&), (||), not)
+import           Data.Bits
+import           Prelude   hiding (not, (&&), (||))
+import           Types
+import           Utils
 
 --Gate Macros
 
