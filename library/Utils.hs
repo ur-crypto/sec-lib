@@ -47,7 +47,7 @@ genKeyPair :: BS.ByteString -> IO (BS.ByteString, BS.ByteString)
 genKeyPair rkey = do
     rnd <- getEntropy cipherSize
     let (Just (k0, fill)) = BS.unsnoc rnd
-    let k1 = BS.pack $ BS.zipWith xor k1 rkey
+    let k1 = BS.pack $ BS.zipWith xor k0 rkey
     let (b0, b1) = getFills $ testBit fill 0
     return (BS.concat [k0, b0], BS.concat [k1, b1])
 
