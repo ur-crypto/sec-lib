@@ -1,15 +1,13 @@
+{-# LANGUAGE BangPatterns         #-}
+{-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE TypeSynonymInstances #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE BangPatterns #-}
 module Gate where
-import Utils
-import Types
-import Network.Socket
+import           Data.Bits
+import qualified Data.ByteString           as BS
+import           Network.Socket
 import qualified Network.Socket.ByteString as SBS
-import qualified Data.ByteString as BS
-import Data.Bits
-import Data.List
-import Control.Monad
+import           Types
+import           Utils
 
 data KeyContext = AES FixedKey
                 | RAND Key
@@ -21,10 +19,10 @@ class LocalValue v where
     notHandler :: Node v -> IO (Node v)
     process :: Maybe Socket -> [KeyContext] -> Node v -> IO (Node v)
     process soc fkeys (Gate ty k1 k2) = do
-        x <- process soc fkeys k1
-        y <- process soc fkeys k2
+        !x <- process soc fkeys k1
+        !y <- process soc fkeys k2
         case (x, y) of
-            ((Input a), (Input b)) -> 
+            ((Input a), (Input b)) ->
                 gateHandler soc fkeys ty a b
             ((Input _), (Constant b)) ->
                 processConstant ty x b
