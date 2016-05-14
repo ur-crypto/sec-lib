@@ -1,14 +1,62 @@
-{-# LANGUAGE MultiWayIf #-}
+{-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE MultiWayIf           #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 module Producer where
 import           Control.Concurrent
 import           Data.Bits
 import qualified Data.ByteString           as BS
+import           Data.List
 import           Gate
 import           Network.Socket
 import qualified Network.Socket.ByteString as SBS
 import           Types
 import           Utils
 
+--returns the possibly modified output plus the sendable string
+encTruthTable :: FixedKey -> PTT -> [BS.ByteString]
+encTruthTable fkey tt' = do
+  let (TruthTable r1 r2 r3 r4) = permute tt'
+  map (encOutKey fkey) [r1, r2, r3, r4]
+  where
+    permute (TruthTable o1 o2 o3 o4) =
+      let [o1', o2', o3', o4'] = sortBy order [o1, o2, o3, o4] in
+      TruthTable o1' o2' o3' o4'
+      where
+        order (_, _, a) (_, _, b) =
+          let a' = BS.last a
+              b' = BS.last b in
+              compare a' b'
+
+instance LocalValue (Key, Key) where
+    notHandler (Input (k1, k2)) = return $ Input (k2, k1)
+    notHandler (Constant l) = return $ Constant $ not l
+    notHandler _ = error "Should not recieve Gate"
+    gateHandler _ _ XOR (a0, a1) (b0, b1) =
+        let o1 = BS.pack $ BS.zipWith xor a0 b0
+            o2 = BS.pack $ BS.zipWith xor a1 b1 in do
+        return (Input (o1, o2))
+    gateHandler (Just soc) [AES fkey,RAND rkey] ty a b = do
+        ok <- genKeyPair rkey
+        let o = Input ok
+        let tt = getTT ty o (Input a) (Input b)
+        sendInfo tt
+        return o
+        where
+            getTT AND (Input (o0, o1)) = helper o0 o0 o0 o1
+            getTT OR (Input (o0, o1)) = helper o0 o1 o1 o1
+            getTT XOR (Input (o0, o1)) = helper o0 o1 o1 o0
+            getTT NAND (Input (o0, o1)) = helper o1 o1 o1 o0
+            getTT BIJ (Input (o0, o1)) = helper o1 o0 o0 o1
+            getTT _ _ = error "Should not pass gates to gates"
+
+            helper o1 o2 o3 o4 (Input (a0, a1)) (Input (b0, b1))=
+                TruthTable (a0, b0, o1) (a0, b1, o2) (a1, b0, o3) (a1, b1, o4)
+            helper _ _ _ _ _ _ = error "Should only pass values"
+
+            sendInfo :: PTT -> IO()
+            sendInfo tt = do SBS.sendMany soc $ encTruthTable fkey tt
+    gateHandler Nothing _ _ _ _ = error "Needs a socket"
+    gateHandler _ _ _ _ _ = error "Needs Correct Keys"
 
 processGates :: Socket -> Key -> Key -> [PKey] -> IO [PKey]
 processGates soc rkey fkeystr gates = do
@@ -44,6 +92,7 @@ doWithSocket soc (inputProduce, inputConsume) test =  do
     fkeystr <- genFixedKey
     SBS.sendAll soc fkeystr
     keyList <- mapM (const (genKeyPair rkey)) l
+    print keyList
     let (ourList, theirList) = splitAt (finiteBitSize inputProduce) (map Input keyList)
     let bothList = (bits2Bools inputProduce) ++ (bits2Bools inputConsume)
     sendList soc keyList bothList

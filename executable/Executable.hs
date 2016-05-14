@@ -1,5 +1,6 @@
 import qualified Consumer                 as C
 import           Control.Concurrent.Async
+import           Data.Bits
 import           Data.Int
 import           Examples
 import           Ops
@@ -23,7 +24,7 @@ doArgs ("both":_) = do
     hpsoc <- async P.getSocket
     csoc <- wait hcsoc
     psoc <- wait hpsoc
-    printTest (csoc, psoc) (1::Int8,3::Int8) edist
+    printTest (csoc, psoc) (1::Int8,3::Int8) (==.)
 doArgs _ = usage
 
 main :: IO()
