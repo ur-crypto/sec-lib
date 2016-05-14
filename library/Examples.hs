@@ -43,24 +43,20 @@ test64 = 395648674974903
 --andShift xs ys = (O.shiftL 1 xs) O..&. ys
 
 numCmps :: [Node a] -> [Node a] -> [Node a]
-numCmps as bs = (Constant False):[]
-{-numCmps as bs = imp as bs
+--numCmps as bs = (Constant False):[]
+numCmps as bs = [(imp as bs)]
     where
     imp :: [Node a] -> [Node a] -> Node a
-    imp [n1] [n2] =
-           let nbool = Not n2 in
-           n1 && nbool
+    imp [n1] [n2] = n1 && Not n2 
     imp (n1:n1s) (n2:n2s) =
-           let nbool = Not n2
-               mbool = Not n1
-               l1 = length n1s
+           let l1 = length n1s
                l2 = length n2s in
                case (l1 > l2,l1 < l2) of
                     (True,_)      -> n1 || (imp n1s (n2:n2s))
-                    (False,False) -> ifThenElse ( n1 && nbool) n1 (ifThenElse (mbool && n2) n1 (imp n1s n2s))
+                    (False,False) -> ifThenElse (b_xor n1 n2) n1 (imp n1s n2s)
                     (False,True)  -> n2 || (imp (n1:n1s) n2s)
     imp _ _ = error "Bad args for imp"
--}
+
 
 numCmp :: SecureFunction a
 numCmp as bs = [imp as bs]
@@ -123,8 +119,8 @@ editDist d0 d1 (d:ds) (x:xs) (y:ys) = let v1 = ((xor x y)+d0) in
 editDistance :: SecureFunction a
 editDistance xs ys = table ! (m,n)
     where
-    m     = 7 :: Int
-    n     = 7 :: Int
+    m     = 3 :: Int
+    n     = 3 :: Int
     --(m,n) = (length xs, length ys)
     x     = array (1,m) (zip [1..] xs)
     y     = array (1,n) (zip [1..] ys)
@@ -238,6 +234,7 @@ edistance s t = d ! (ls , lt)
                                   writeArray m (i,j) $ foldl1 cmp [x+(O.num2Const 1), y+(O.num2Const 1), z+c ]
                 return m
 
+cmpp a b = O.if' (numCmps a b) a b
 cmp a b = O.if' (a O.<. b) a b
 for_ xs f =  mapM_ f xs
 
@@ -252,8 +249,8 @@ edist s1 s2 = iter s1 s2 ls2 where
                iter _ _ _ = error "iter (distance): unexpected arguments"
                rest e c (c2:c2s) (e1:es@(e2:es')) =
                        seq k (k : rest k c c2s es) where
-                               k = (cmp (e1 + (if' [(b_xor c c2)] (O.num2Const 0) (O.num2Const 1))) $
-                                       cmp (e+(O.num2Const 1)) (e2+(O.num2Const 1)))
+                               k = (cmpp (e1 + (if' [(b_xor c c2)] (O.num2Const 0) (O.num2Const 1))) $
+                                       cmpp (e+(O.num2Const 1)) (e2+(O.num2Const 1)))
                rest _ _ [] _ = []
                rest _ _ _ _ = error "rest (distance): unexpected arguments"
 
