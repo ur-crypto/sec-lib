@@ -98,23 +98,25 @@ ourBool (n1:n1s) = case n1 of
                        (False)  ->    ((Constant False):[]) ++ (ourBool n1s)
 ourBool [] = []
 
-{-
 editDist :: SecureFunction a
-editDist xs ys =  let dist = initDist (length ys) in
-                         editDistVec [Constant False] [Constant False] dist xs ys
+editDist xs ys =  let xss = (take 4 xs) 
+                      yss = (take 4 ys) in
+                      let (_,prevCol) = initDist (length yss) in
+                         editDistEff  [Constant False] prevCol xss yss
 
-initDist :: Num -> [[Node a]]
-initDist a = case (a>1) of
-                 (True)     ->    let dist = initDist(a-1) in
-                                      dist++[bitsToBools (fromIntegral (a :: Int) :: Int8))]
-                 (False)    ->    [Constant True]
+editDistEff :: [Node a] -> [[Node a]] -> SecureFunction a
+editDistEff topValue es (x:xs) ys = 
+                 let prev = topValue+[Constant True] in
+                 let updatedColumn = columnCalc [prev] prev es (x:xs) ys in
+                     editDistEff prev updatedColumn xs ys
+editDistEff _ curColumn [] _ = (last curColumn)
 
-editDistVec :: [Node a] -> [Node a] -> [[Node a]] -> SecureFunction a
-editDist d0 d1 (d:ds) (x:xs) (y:ys) = let v1 = ((xor x y)+d0) in
-                                      let v2 = (if' (numCmp d v1) v1 d) in
-                                      let v3 = (if' (numCmp d1 v2) v2 d1) in
-                                          editDist
--}
+columnCalc :: [[Node a]] -> [Node a] -> [[Node a]] -> [Node a] -> [Node a] -> [[Node a]]
+columnCalc curColumn prev (e1:es@(e2:es')) (x:xs) (y:ys) = 
+                  let tempMatch = e1 + [b_xor x y] in
+                    let currentValue = ((cmpp (cmpp prev e2) tempMatch) + [Constant True]) in
+                      columnCalc (curColumn++[currentValue]) currentValue es (x:xs) ys 
+columnCalc curColumn _ _ _ [] = curColumn 
 
 editDistance :: SecureFunction a
 editDistance xs ys = table ! (m,n)
@@ -234,7 +236,7 @@ edistance s t = d ! (ls , lt)
                                   writeArray m (i,j) $ foldl1 cmp [x+(O.num2Const 1), y+(O.num2Const 1), z+c ]
                 return m
 
-cmpp a b = O.if' (numCmps a b) a b
+cmpp a b = O.if' (numCmps a b) b a
 cmp a b = O.if' (a O.<. b) a b
 for_ xs f =  mapM_ f xs
 
