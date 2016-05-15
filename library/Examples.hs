@@ -89,7 +89,7 @@ hammingWeight p n =
          (True)     ->    let (leftHalf,rightHalf) = splitAt (quot p 2) n in
                                let (lenleft,subleft) = hammingWeight (quot p 2) leftHalf
                                    (lenright,subright) = hammingWeight (quot p 2) rightHalf in
-                                    let (len,(carry,subTotal)) = addIntFP 6 lenleft subleft lenright subright in
+                                    let (len,(carry,subTotal)) = addIntFP 6 subleft subright in
                                           (len+1,((carry:[])++subTotal))
          (False)    ->    (1,n)
 
@@ -98,25 +98,31 @@ ourBool (n1:n1s) = case n1 of
                        (False)  ->    ((Constant False):[]) ++ (ourBool n1s)
 ourBool [] = []
 
+logCeil :: Int -> Int
+logCeil i = case (i>1) of
+            (True) -> 1 + floor ( logBase 2 (fromIntegral i))
+            (False) -> 1
+
 editDist :: SecureFunction a
 editDist xs ys =  let xss = (take 4 xs) 
                       yss = (take 4 ys) in
                       let (_,prevCol) = initDist (length yss) in
-                         editDistEff  [Constant False] prevCol xss yss
+                         editDistEff 1 [Constant False] prevCol xss yss
 
-editDistEff :: [Node a] -> [[Node a]] -> SecureFunction a
-editDistEff topValue es (x:xs) ys = 
-                 let prev = topValue+[Constant True] in
-                 let updatedColumn = columnCalc [prev] prev es (x:xs) ys in
-                     editDistEff prev updatedColumn xs ys
-editDistEff _ curColumn [] _ = (last curColumn)
+editDistEff :: Int -> [Node a] -> [[Node a]] -> SecureFunction a
+editDistEff i topValue es (x:xs) ys = 
+                 let (_,(_,prev)) = addIntFP (logCeil i) topValue [Constant True] in
+                 let updatedColumn = columnCalc i 1 [prev] prev es (x:xs) ys in
+                     editDistEff (i+1) prev updatedColumn xs ys
+editDistEff _ _ es [] _ = (last es)
 
-columnCalc :: [[Node a]] -> [Node a] -> [[Node a]] -> [Node a] -> [Node a] -> [[Node a]]
-columnCalc curColumn prev (e1:es@(e2:es')) (x:xs) (y:ys) = 
-                  let tempMatch = e1 + [b_xor x y] in
-                    let currentValue = ((cmpp (cmpp prev e2) tempMatch) + [Constant True]) in
-                      columnCalc (curColumn++[currentValue]) currentValue es (x:xs) ys 
-columnCalc curColumn _ _ _ [] = curColumn 
+columnCalc :: Int -> Int -> [[Node a]] -> [Node a] -> [[Node a]] -> [Node a] -> [Node a] -> [[Node a]]
+columnCalc i j curColumn prev (e1:es@(e2:es')) (x:xs) (y:ys) = 
+                  let (_,(_,tempMatch)) = addIntFP (logCeil (max i j)) e1 [b_xor x y] in
+                   let secondMatch = cmpp (cmpp prev e2) tempMatch in
+                    let (_,(_,currentValue)) = (addIntFP (logCeil (max i j)) secondMatch [Constant True]) in
+                      columnCalc i (j+1) (curColumn++[currentValue]) currentValue es (x:xs) ys 
+columnCalc _ _ curColumn _ _ _ [] = curColumn 
 
 editDistance :: SecureFunction a
 editDistance xs ys = table ! (m,n)
@@ -136,10 +142,10 @@ editDistance xs ys = table ! (m,n)
     --dist (i,0) = let (l1,(b1,a1)) = addIntFP 4 (length (table ! (i-1,0))) (table ! (i-1,0)) 1 ((Constant True):[]) in (b1:[])++a1
     dist (0,j) = ourBool (bits2Bools (fromIntegral (j :: Int) :: Int8))
     dist (i,0) = ourBool (bits2Bools (fromIntegral (i :: Int) :: Int8))
-    dist (i,j) = let (li,(carry,intermed)) = addIntFP 4 (length (table ! (i-1,j-1))) (table ! (i-1,j-1)) 1 ((Constant True):[]) in
+    dist (i,j) = let (li,(carry,intermed)) = addIntFP 4 (table ! (i-1,j-1)) ((Constant True):[]) in
                      let result = if' (numCmps (table ! (i-1,j)) (table ! (i,j-1))) (table ! (i,j-1))
                                           (if' (numCmps (table ! (i-1,j-1)) ((carry:[])++intermed)) ((carry:[])++intermed) (table ! (i-1,j))) in
-                              let (l1,(b1,a1)) = addIntFP 4 (length result) result 1 ((Constant True):[]) in
+                              let (l1,(b1,a1)) = addIntFP 4 result ((Constant True):[]) in
                               (b1:[])++a1
                      -- ifThenElses (numCmps ((b1:[])++a1) ((b2:[])++a2)) ((b2:[])++a2) ((b1:[])++a1)
     --dist (i,j) = a1 --ifThenElses (numCmps a1 a2) a2 (ifThenElses (numCmps a1 a3) a3 a1)
@@ -190,7 +196,7 @@ hammingWt p n =
                                       let fsummand = (urexor) ((urexor) subleft submid) subright
                                           ssummand = ((urexor) ((urexor) (ureand subleft submid) (ureand submid  subright)) (ureand subleft subright))++((Constant False):[])
                                           mx = maximum((lenleft:lenright:lenmid:[])) in
-                                          let (len,(carry,subTotal)) = addIntFP 6 mx fsummand (mx+1) ssummand in
+                                          let (len,(carry,subTotal)) = addIntFP 6 fsummand ssummand in
                                               (len+1,((carry:[])++subTotal))
          (False,True)    -> let (fb:[sb]) = n in (2,((fb && sb):((b_xor) fb sb):[]))
          (False,False)   -> (1,n)
