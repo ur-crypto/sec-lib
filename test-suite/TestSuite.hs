@@ -1,17 +1,17 @@
 {-# LANGUAGE RankNTypes #-}
+import qualified Consumer                 as C
+import           Control.Concurrent.Async
+import           Data.Bits
+import           Data.Int
+import           Examples
+import           Network.Socket
+import qualified Ops                      as O
+import qualified Producer                 as P
 import qualified Test.Tasty
-import Test.Tasty.Hspec
-import Control.Concurrent.Async
-import Examples
-import TestUtils
-import Types
-import Utils
-import qualified Ops as O
-import Network.Socket
-import qualified Producer as P
-import qualified Consumer as C
-import Data.Int
-import Data.Bits
+import           Test.Tasty.Hspec
+import           TestUtils
+import           Types
+import           Utils
 
 main :: IO ()
 main = do
@@ -30,7 +30,7 @@ spec :: (Socket, Socket) -> Spec
 spec (csoc, psoc)=  do
 {-
     it "Tests Edit Distance" $ do
-        let(x,y) = (10::Int16, 20::Int16) 
+        let(x,y) = (10::Int16, 20::Int16)
         ans <- doTest (csoc, psoc) (x, y) levenshtein2
         ans `shouldBe` (bits2Bools $ boolsEditDistance (bits2Bools x) (bits2Bools y))
 -}
@@ -47,9 +47,9 @@ spec (csoc, psoc)=  do
     it "Num hamDist 64 False" $ hamTest hammingDist test64 testb64 (28 :: Int8)
     it "Num XOR 64 True" $ listTest xor (15 :: Int64) (20 :: Int64) (xor (15 :: Int64) (20 :: Int64))
     it "Num OR 64 True" $ listTest (.|.) (15 :: Int64) (20 :: Int64) ((.|.) (15 :: Int64) (20 :: Int64))
-    it "Num nand 64 True" $ listTest (O..~&.) (15 :: Int64) (20 :: Int64) ((\x -> \y -> (complement (x .&. y))) (15 :: Int64) (20 :: Int64))
+    it "Num nand 64 True" $ listTest (O..~&.) (15 :: Int64) (20 :: Int64) ((\x y -> complement (x .&. y)) (15 :: Int64) (20 :: Int64))
     --it "Num Shift 64 True" $ listTest andShift (15 :: Int64) (20 :: Int64) ((.&.) (30 :: Int64) (20 :: Int64))
-    it "Tests for constant negation" $ 
+    it "Tests for constant negation" $
         listTest (\x -> \y -> (complement $ (shiftL x 2) .&. (shiftL y 2)))
             (2 ::Int8) (3 ::Int8) (complement $ (shiftL (2::Int8) 2) .&. (shiftL (3::Int8) 2))
     it "Test addition" $
@@ -64,15 +64,15 @@ spec (csoc, psoc)=  do
         boolTest test num1 num2 expect = (doTest (csoc, psoc) (num1, num2) test) `shouldReturn` [expect]
 
         hamTest  :: FiniteBits b => (forall a. SecureFunction a) -> b -> b -> Int8 -> Expectation
-        hamTest test inputNum inputNum2 expectedNumber = do 
-            ourAnswers <- (doTest (csoc, psoc) (inputNum, inputNum2) test) 
+        hamTest test inputNum inputNum2 expectedNumber = do
+            ourAnswers <- (doTest (csoc, psoc) (inputNum, inputNum2) test)
             let expectAnswers = (bits2Bools expectedNumber)
             ourAnswers `shouldBe` expectAnswers
-     
+
 
         listTest  :: FiniteBits b => (forall a. SecureFunction a) -> b -> b -> b -> Expectation
-        listTest test inputNum inputNum2 expectedNumber = do 
-            ourAnswers <- (doTest (csoc, psoc) (inputNum, inputNum2) test) 
+        listTest test inputNum inputNum2 expectedNumber = do
+            ourAnswers <- (doTest (csoc, psoc) (inputNum, inputNum2) test)
             let expectAnswers = (bits2Bools expectedNumber)
             ourAnswers `shouldBe` expectAnswers
 

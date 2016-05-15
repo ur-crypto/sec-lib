@@ -26,7 +26,7 @@ decTruthTable fkey k1 k2 (TruthTable o00 o01 o10 o11) =
         (1, 1) -> o11
         _ -> error $ "Improper decoding of: " ++ show k1' ++ ", " ++ show k2'
         in
-  encOutKey fkey (k1, k2, o)
+  enc fkey (k1, k2, o)
 
 instance LocalValue Key where
     notHandler (Input a) = return $ Input a
@@ -37,6 +37,7 @@ instance LocalValue Key where
         return $ Input o
     gateHandler (Just soc) [AES fkey] ty x y = do
         tt <- getTT
+        print tt
         let o = decTruthTable fkey x y tt
         return $ Input $ o
         where
