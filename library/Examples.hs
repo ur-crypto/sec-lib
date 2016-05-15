@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 module Examples where
 import           Control.Monad.ST
 import           Data.Array
@@ -54,7 +55,7 @@ numCmps as bs = [(imp as bs)]
                case (l1 > l2,l1 < l2) of
                     (True,_)      -> n1 || (imp n1s (n2:n2s))
                     (False,False) -> ifThenElse (b_xor n1 n2) n1 (imp n1s n2s)
-                    (False,True)  -> n2 || (imp (n1:n1s) n2s)
+                    (False,True)  -> (Not n2) && (imp (n1:n1s) n2s)
     imp _ _ = error "Bad args for imp"
 
 
@@ -100,28 +101,34 @@ ourBool [] = []
 
 logCeil :: Int -> Int
 logCeil i = case (i>1) of
-            (True) -> 1 + floor ( logBase 2 (fromIntegral i))
-            (False) -> 1
+            (True) -> 2--1 + floor ( logBase 2 (fromIntegral i))
+            (False) -> 2--1 
 
 editDist :: SecureFunction a
-editDist xs ys =  let xss = (take 4 xs) 
-                      yss = (take 4 ys) in
-                      let (_,prevCol) = initDist (length yss) in
+editDist xs ys =  let xss = (take 2 xs) 
+                      yss = (take 1 ys) in
+                      let (_,!prevCol) = initDist (length yss) in
                          editDistEff 1 [Constant False] prevCol xss yss
 
 editDistEff :: Int -> [Node a] -> [[Node a]] -> SecureFunction a
-editDistEff i topValue es (x:xs) ys = 
-                 let (_,(_,prev)) = addIntFP (logCeil i) topValue [Constant True] in
-                 let updatedColumn = columnCalc i 1 [prev] prev es (x:xs) ys in
+editDistEff i topValue es (x:xs) ys =  
+                 let (_,(!carry,!subTotal)) = addIntFP (logCeil i) topValue [Constant True] in
+                 let !prev = [carry]++subTotal in
+                 let !updatedColumn = columnCalc i 1 [prev] prev es x ys in
                      editDistEff (i+1) prev updatedColumn xs ys
 editDistEff _ _ es [] _ = (last es)
 
-columnCalc :: Int -> Int -> [[Node a]] -> [Node a] -> [[Node a]] -> [Node a] -> [Node a] -> [[Node a]]
-columnCalc i j curColumn prev (e1:es@(e2:es')) (x:xs) (y:ys) = 
-                  let (_,(_,tempMatch)) = addIntFP (logCeil (max i j)) e1 [b_xor x y] in
-                   let secondMatch = cmpp (cmpp prev e2) tempMatch in
-                    let (_,(_,currentValue)) = (addIntFP (logCeil (max i j)) secondMatch [Constant True]) in
-                      columnCalc i (j+1) (curColumn++[currentValue]) currentValue es (x:xs) ys 
+columnCalc :: Int -> Int -> [[Node a]] -> [Node a] -> [[Node a]] -> Node a -> [Node a] -> [[Node a]]
+columnCalc i j curColumn prev (e1:es@(e2:es')) x (y:ys) =
+                  let addValue = b_xor x y in
+                  let (_,(!carry,!subTotal)) = addIntFP (logCeil (max i j)) e1 [addValue] in
+                   let !tempMatch = [carry]++subTotal 
+                       firstCompare = cmpp prev e2 in
+                   let [secondCompare] = numCmps firstCompare tempMatch in
+                   let !secondMatch = if' [secondCompare] tempMatch firstCompare in
+                    let (_,(!carry2,!subTotal2)) = (addIntFP (logCeil (max i j)) secondMatch [((Not secondCompare) || ((secondCompare) && addValue))]) in
+                    let !currentValue = [carry2]++subTotal2 in
+                      columnCalc i (j+1) (curColumn++[currentValue]) currentValue es x ys 
 columnCalc _ _ curColumn _ _ _ [] = curColumn 
 
 editDistance :: SecureFunction a
@@ -266,6 +273,7 @@ edist s1 s2 = iter s1 s2 ls2 where
 initDist :: Int -> ([Node a],[[Node a]])
 initDist a = case (a>0) of
                  (True)     ->    let (lst,dist) = initDist(a-1) in
-                                      let nxtt = lst+(O.num2Const 1) in
+                                    let (_,(carry,subTotal)) = addIntFP 2 lst [Constant True] in
+                                      let nxtt = [carry]++subTotal in
                                           (nxtt,(dist++[nxtt]))
                  (False)    ->    ([Constant False],[[Constant False]])
