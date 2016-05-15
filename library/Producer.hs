@@ -22,10 +22,16 @@ encTruthTable fkey tt' = do
       let [o1', o2', o3', o4'] = sortBy order [o1, o2, o3, o4] in
       TruthTable o1' o2' o3' o4'
       where
-        order (_, _, a) (_, _, b) =
-          let a' = BS.last a
-              b' = BS.last b in
-              compare a' b'
+        order (a, b, _) (c, d, _) =
+          let a' = fromEnum $ BS.last a
+              b' = fromEnum $ BS.last b
+              c' = fromEnum $ BS.last c
+              d' = fromEnum $ BS.last d in
+              case compare a' c' of
+                EQ -> case compare b' d' of
+                        EQ -> error $ "Should not have equal elements: " ++ show tt'
+                        x -> x
+                x -> x
 
 instance LocalValue (Key, Key) where
     notHandler (Input (k1, k2)) = return $ Input (k2, k1)
@@ -33,7 +39,7 @@ instance LocalValue (Key, Key) where
     notHandler _ = error "Should not recieve Gate"
     gateHandler _ _ XOR (a0, a1) (b0, b1) =
         let o1 = BS.pack $ BS.zipWith xor a0 b0
-            o2 = BS.pack $ BS.zipWith xor a1 b1 in do
+            o2 = BS.pack $ BS.zipWith xor a0 b1 in do
         return (Input (o1, o2))
     gateHandler (Just soc) [AES fkey,RAND rkey] ty a b = do
         ok <- genKeyPair rkey
@@ -54,7 +60,7 @@ instance LocalValue (Key, Key) where
             helper _ _ _ _ _ _ = error "Should only pass values"
 
             sendInfo :: PTT -> IO()
-            sendInfo tt = do SBS.sendMany soc $ encTruthTable fkey tt
+            sendInfo tt = SBS.sendMany soc $ encTruthTable fkey tt
     gateHandler Nothing _ _ _ _ = error "Needs a socket"
     gateHandler _ _ _ _ _ = error "Needs Correct Keys"
 
@@ -92,7 +98,6 @@ doWithSocket soc (inputProduce, inputConsume) test =  do
     fkeystr <- genFixedKey
     SBS.sendAll soc fkeystr
     keyList <- mapM (const (genKeyPair rkey)) l
-    print keyList
     let (ourList, theirList) = splitAt (finiteBitSize inputProduce) (map Input keyList)
     let bothList = (bits2Bools inputProduce) ++ (bits2Bools inputConsume)
     sendList soc keyList bothList
