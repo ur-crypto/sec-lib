@@ -37,7 +37,6 @@ instance LocalValue Key where
         return $ Input o
     gateHandler (Just soc) [AES fkey] ty x y = do
         tt <- getTT
-        print tt
         let o = decTruthTable fkey x y tt
         return $ Input $ o
         where
