@@ -46,7 +46,7 @@ not = Not
 --If Then Else Macro
 ifThenElse :: Node a -> Node a -> Node a -> Node a
 ifThenElse bool tb fb =
-    let nbool = Gate NAND bool bool in
+    let nbool = Not bool in
     ((bool && tb) || (nbool && fb))
 
 if' :: SecureNum a -> SecureNum a -> SecureNum a -> SecureNum a

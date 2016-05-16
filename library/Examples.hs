@@ -48,7 +48,7 @@ numCmps :: [Node a] -> [Node a] -> [Node a]
 numCmps as bs = [(imp as bs)]
     where
     imp :: [Node a] -> [Node a] -> Node a
-    imp [n1] [n2] = n1 && Not n2 
+    imp [n1] [n2] = n1 && Not n2
     imp (n1:n1s) (n2:n2s) =
            let l1 = length n1s
                l2 = length n2s in
@@ -102,17 +102,16 @@ ourBool [] = []
 logCeil :: Int -> Int
 logCeil i = case (i>1) of
             (True) -> 2--1 + floor ( logBase 2 (fromIntegral i))
-            (False) -> 2--1 
+            (False) -> 2--1
 
 editDist :: SecureFunction a
-editDist xs ys =  --let xss = (take 2 xs) 
-                    --  yss = (take 2 ys) in
+editDist xs ys =  --let xss = (take 2 xs)
                       let (_,!prevCol) = initDist (length ys) in
                          editDistEff 1 [Constant False] prevCol xs ys
 
 editDistEff :: Int -> [Node a] -> [[Node a]] -> SecureFunction a
 editDistEff i topValue es (x:xs) ys =
-          case (i < 3) of  
+          case (i < 3) of
              (True) ->     let (_,(!carry,!subTotal)) = addIntFP (logCeil i) topValue [Constant True] in
                              let !prev = [carry]++subTotal in
                                let !updatedColumn = columnCalc i 1 [prev] prev es x ys in
@@ -125,32 +124,27 @@ columnCalc i j curColumn prev (e1:es@(e2:es')) x (y:ys) =
       case (j < 3) of
        (True) -> let addValue = b_xor x y in
                   let (_,(!carry,!subTotal)) = addIntFP (logCeil (max i j)) e1 [addValue] in
-                   let !tempMatch = [carry]++subTotal 
+                   let !tempMatch = [carry]++subTotal
                        firstCompare = cmpp prev e2 in
                    let [secondCompare] = numCmps firstCompare tempMatch in
                    let !secondMatch = if' [secondCompare] tempMatch firstCompare in
                     let (_,(!carry2,!subTotal2)) = (addIntFP (logCeil (max i j)) secondMatch [((Not secondCompare) || ((secondCompare) && addValue))]) in
                     let !currentValue = [carry2]++subTotal2 in
-                      columnCalc i (j+1) (curColumn++[currentValue]) currentValue es x ys 
+                      columnCalc i (j+1) (curColumn++[currentValue]) currentValue es x ys
        (False) -> curColumn
-columnCalc _ _ curColumn _ _ _ _ = curColumn 
+columnCalc _ _ curColumn _ _ _ _ = curColumn
 
 editDistance :: SecureFunction a
 editDistance xs ys = table ! (m,n)
     where
     m     = 3 :: Int
     n     = 3 :: Int
-    --(m,n) = (length xs, length ys)
     x     = array (1,m) (zip [1..] xs)
     y     = array (1,n) (zip [1..] ys)
 
-    --table :: Array (Int,Int) [Node a]
     table = array bnds [(ij, dist ij) | ij <- range bnds]
     bnds  = ((0,0),(m,n))
-    --bnds  = ((0,0),(m,n))
     dist (0,0) = [Constant False]
-    --dist (0,j) = let (l1,(b1,a1)) = addIntFP 4 (length (table ! (0,j-1))) (table ! (0,j-1)) 1 ((Constant True):[]) in (b1:[])++a1
-    --dist (i,0) = let (l1,(b1,a1)) = addIntFP 4 (length (table ! (i-1,0))) (table ! (i-1,0)) 1 ((Constant True):[]) in (b1:[])++a1
     dist (0,j) = ourBool (bits2Bools (fromIntegral (j :: Int) :: Int8))
     dist (i,0) = ourBool (bits2Bools (fromIntegral (i :: Int) :: Int8))
     dist (i,j) = let (li,(carry,intermed)) = addIntFP 4 (table ! (i-1,j-1)) ((Constant True):[]) in
@@ -158,16 +152,6 @@ editDistance xs ys = table ! (m,n)
                                           (if' (numCmps (table ! (i-1,j-1)) ((carry:[])++intermed)) ((carry:[])++intermed) (table ! (i-1,j))) in
                               let (l1,(b1,a1)) = addIntFP 4 result ((Constant True):[]) in
                               (b1:[])++a1
-                     -- ifThenElses (numCmps ((b1:[])++a1) ((b2:[])++a2)) ((b2:[])++a2) ((b1:[])++a1)
-    --dist (i,j) = a1 --ifThenElses (numCmps a1 a2) a2 (ifThenElses (numCmps a1 a3) a3 a1)
-                    -- a3 = ifThenElses (Gate XOR (x ! i) (y ! i)) ab3 aa3
-                      --   where
-                        -- aa3 = table ! (i-1,j-1)
-                        -- (la3,(bb3,ab3)) = addIntFP 8 (length (table ! (i-1,j-1))) (table ! (i-1,j-1)) 2 ((Constant True):(Constant False):[])
-
--- minimum [table ! (i-1,j) + 1, table ! (i,j-1) + 1,
---        if x ! i == y ! j then table ! (i-1,j-1) else 1 + table ! (i-1,j-1)]
-
 
 ueand :: [Node a] -> [Node a] -> [Node a]
 ueand (n1:n1s) [] = let reslt = ueand n1s [] in
