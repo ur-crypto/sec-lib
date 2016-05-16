@@ -13,13 +13,12 @@ type PTT = TruthTable (Key, Key, Key)
 type TruthTable a = [a,a,a,a]
 
 type FixedKey = AES128
-type SecureFunction = forall a. LocalValue a => SecureNum a -> SecureNum a -> SecureNum a
-type SecureNum a = [Literal a]
+type SecureFunction a = LocalValue a =>  SecureNum a -> SecureNum a -> SecureNum a
+type SecureNum a = LocalValue a => [Literal a]
 data Literal a  = Constant Bool
-                | Input (PartyContext, IO a) --possibly add in the socket and key here?
+                | Input (Socket, [KeyContext], IO a)
 data KeyContext = AES FixedKey
                 | RAND Key
-type PartyContext = (Socket, [KeyContext])
 
 data GateType = AND | OR | XOR
 
@@ -43,7 +42,11 @@ class LocalValue v where
   checkConstant ty (Constant a) (Input b) = Just $ partialConstant ty (Input b) a
   checkConstant ty (Input a) (Constant b) = Just $ partialConstant ty (Input a) b
   checkConstant _ (Input _) (Input _) = Nothing
+  defaultGate :: SecureGate v
   andGate :: SecureGate v
+  andGate = defaultGate
   orGate :: SecureGate v
+  orGate = defaultGate
   xorGate :: SecureGate v
+  xorGate = defaultGate
   notGate :: Literal v -> Literal v

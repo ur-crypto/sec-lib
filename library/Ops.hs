@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE RankNTypes           #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 module Ops where
 import           Data.Bits
@@ -8,27 +9,27 @@ import           Utils
 
 --Gate Macros
 
-(&&) :: Node a -> Node a -> Node a
-(&&) = Gate AND
-(||) :: Node a -> Node a -> Node a
-(||) = Gate OR
-b_xor :: Node a -> Node a -> Node a
-b_xor = Gate XOR
-nand :: Node a -> Node a -> Node a
-nand = Gate NAND
-bij :: Node a -> Node a -> Node a
-bij = Gate BIJ
-not :: Node a -> Node a
-not = Not
+(&&) :: SecureGate a
+(&&) = andGate
+(||) :: SecureGate a
+(||) = orGate
+bXor :: SecureGate a
+bXor = xorGate
+nand :: SecureGate a
+nand a b = notGate $ andGate a b
+bij :: SecureGate a
+bij a b = notGate $ xorGate a b
+not :: LocalValue a => Literal a -> Literal a
+not = notGate
 
 --Bit macros
-(.~&.) :: SecureFunction a
+(.~&.) :: SecureFunction
 (.~&.) = zipWith nand
 
-(<.) :: SecureFunction a
+(<.) :: SecureFunction
 (<.) as bs = [imp as bs]
     where
-    imp :: [Node a] -> [Node a] -> Node a
+    imp :: SecureNum a -> SecureNum a -> Literal a
     imp [n1] [n2] =
            let nbool = not n2 in
            n1 && nbool
@@ -38,15 +39,15 @@ not = Not
            ifThenElse ( n1 && nbool) n1 (ifThenElse (mbool && n2) n1 (imp n1s n2s))
     imp _ _ = error "Bad args for imp"
 
-(==.) :: SecureFunction a
+(==.) :: SecureFunction
 (==.) n1 n2 = [foldl1 (&&) (zipWith bij n1 n2)]
-(/=.) :: SecureFunction a
+(/=.) :: SecureFunction
 (/=.) a b = complement (a ==. b)
 
 --If Then Else Macro
-ifThenElse :: Node a -> Node a -> Node a -> Node a
+ifThenElse :: Literal a -> Literal a -> Literal a -> Literal a
 ifThenElse bool tb fb =
-    let nbool = Not bool in
+    let nbool = not bool in
     ((bool && tb) || (nbool && fb))
 
 if' :: SecureNum a -> SecureNum a -> SecureNum a -> SecureNum a
@@ -60,12 +61,12 @@ extendBy n x = (map (\_->Constant False) [0..n-1]) ++ x
 
 
 --add def
-addInt :: [Node a1] -> [Node a1] -> [Node a1]
+addInt :: [Literal a1] -> [Literal a1] -> [Literal a1]
 addInt m n = let (_,(_,subTotal)) =  addIntFP (length m) m n in
                            subTotal
 
-addIntFP :: Int -> [Node a1] -> [Node a1] -> (Int, (Node a1, [Node a1]))
-addIntFP _ [n1] [n2] = (1,(n1 && n2,((b_xor n1 n2):[])))
+addIntFP :: Int -> [Literal a1] -> [Literal a1] -> (Int, (Literal a1, [Literal a1]))
+addIntFP _ [n1] [n2] = (1,(n1 && n2,((bXor n1 n2):[])))
 addIntFP p (n1:n1s) (n2:n2s) =
   let m1 = 1+(length n1s)
       m2 = 1+(length n2s) in
@@ -81,17 +82,17 @@ addIntFP p (n1:n1s) (n2:n2s) =
                                              propogate = xor (n1:n1s) (n2:n2s) in
                                              subCompute propogate generate
           (False,False,True,_)        -> let (len,(carry,resltsum)) = addIntFP p n1s (n2:n2s) in
-                                         (len+1,((carry && n1),((b_xor n1 carry):[])++resltsum))
+                                         (len+1,((carry && n1),((bXor n1 carry):[])++resltsum))
           (False,False,False,True)    -> let (len,(carry,resltsum)) = addIntFP p (n1:n1s) n2s in
-                                         (len+1,((carry && n2),((b_xor n2 carry):[])++resltsum))
+                                         (len+1,((carry && n2),((bXor n2 carry):[])++resltsum))
 addIntFP _ _ _ = error "unbalanced inputs"
 
-subCompute :: [Node a] -> [Node a] -> (Int, (Node a, [Node a]))
+subCompute :: [Literal a] -> [Literal a] -> (Int, (Literal a, [Literal a]))
 subCompute [p1] [g1]  = (1,(g1,p1:[]))
 subCompute (p1:p1s) (g1:g1s) =
       let (len,(carry,prevcarry)) = subCompute p1s g1s in
-          (len+1,((b_xor g1 (carry && p1)),(((b_xor p1 carry):[])++prevcarry)))
+          (len+1,((bXor g1 (carry && p1)),(((bXor p1 carry):[])++prevcarry)))
 subCompute _ _ = error "unbalanced inputs"
 
-instance Num (SecureNum a) where
+instance Num (SecureNum x) where
     (+) = addInt
