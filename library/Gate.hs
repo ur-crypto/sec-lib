@@ -16,7 +16,7 @@ class LocalValue v where
     gateHandler :: Maybe Socket -> [KeyContext] -> GateType -> v -> v -> IO (Node v)
     notHandler :: Node v -> IO (Node v)
     process :: Maybe Socket -> [KeyContext] -> Node v -> IO (Node v)
-    process soc fkeys (Gate ty k1 k2) = do
+    process soc fkeys (Gate ty !k1 !k2) = do
         !x <- process soc fkeys k1
         !y <- process soc fkeys k2
         case (x, y) of

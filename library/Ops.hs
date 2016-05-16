@@ -50,7 +50,8 @@ ifThenElse bool tb fb =
     ((bool && tb) || (nbool && fb))
 
 if' :: SecureNum a -> SecureNum a -> SecureNum a -> SecureNum a
-if' bools= zipWith (ifThenElse (foldl1 (||) bools))
+if' _ a _ = a
+  -- zipWith (ifThenElse (foldl1 (||) bools))
 
 num2Const :: Int -> SecureNum a
 num2Const n = map Constant (bits2Bools n)
