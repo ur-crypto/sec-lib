@@ -61,7 +61,7 @@ extendBy n x = (map (\_->Constant False) [0..n-1]) ++ x
 
 --add def
 addInt :: [Node a1] -> [Node a1] -> [Node a1]
-addInt m n = let (_,(_,subTotal)) =  addIntFP 5 m n in
+addInt m n = let (_,(_,subTotal)) =  addIntFP (length m) m n in
                            subTotal
 
 addIntFP :: Int -> [Node a1] -> [Node a1] -> (Int, (Node a1, [Node a1]))
