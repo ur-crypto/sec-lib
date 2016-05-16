@@ -1,50 +1,49 @@
+{-# LANGUAGE DataKinds            #-}
 {-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE RankNTypes           #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 module Types where
-
-import           Data.Bits
-import           Data.ByteString as BS
-import qualified Prelude         as P
+import           Crypto.Cipher.AES
+import           Data.ByteString   as BS
+import           Network.Socket
 
 type Key = BS.ByteString
-type CKey = Node Key
 type CTT = TruthTable Key
-type PKey = Node (Key, Key)
 type PTT = TruthTable (Key, Key, Key)
+type TruthTable a = [a,a,a,a]
 
-type SecureFunction a = SecureNum a -> SecureNum a -> SecureNum a
+type FixedKey = AES128
+type SecureFunction = forall a. LocalValue a => SecureNum a -> SecureNum a -> SecureNum a
+type SecureNum a = [Literal a]
+data Literal a  = Constant Bool
+                | Input (PartyContext, IO a) --possibly add in the socket and key here?
+data KeyContext = AES FixedKey
+                | RAND Key
+type PartyContext = (Socket, [KeyContext])
 
-data GateType   = AND
-                | OR
-                | XOR
-                | NAND
-                | BIJ deriving(P.Show)
+data GateType = AND | OR | XOR
 
-data Node a    = Gate GateType (Node a) (Node a)
-                | Not (Node a)
-                | Constant P.Bool
-                | Input a deriving(P.Show)
+constants :: GateType -> Bool -> Bool -> Bool
+constants AND a b = (&&) a b
+constants OR a b = (||) a b
+constants XOR a b = if a then not b else b
 
-type SecureNum a = [Node a]
 
-data TruthTable a = TruthTable a a a a deriving(P.Show)
-
-instance P.Eq (Node a) where
-    (==) = P.undefined
-    (/=) = P.undefined
-
-instance Bits (SecureNum a) where
-    (.&.) = P.zipWith P.$ Gate AND
-    (.|.) = P.zipWith P.$ Gate OR
-    xor = P.zipWith P.$ Gate XOR
-    complement = P.map P.$ Not
-    shiftL xs num = P.drop num xs P.++ P.map (P.const P.$ Constant P.False) [0 .. num P.-1]
-    shiftR xs num = P.map (P.const P.$ Constant P.False) [0 .. num P.-1] P.++ P.take num xs
-    rotate = P.undefined
-    -- rotate x st = P.take (P.length st) P.$ P.drop (P.negate x `P.mod` P.length st) P.$ P.cycle st
-    isSigned _ = P.False
-    testBit = P.undefined
-    bit _ = P.undefined
-    popCount = P.undefined
-    bitSize = P.length
-    bitSizeMaybe a = P.Just P.$ P.length a
+type SecureGate v = LocalValue v => Literal v -> Literal v -> Literal v
+class LocalValue v where
+  partialConstant :: GateType -> Literal v -> Bool -> Literal v
+  partialConstant AND _ False = Constant False
+  partialConstant AND key True = key
+  partialConstant OR key False = key
+  partialConstant OR _ True = Constant True
+  partialConstant XOR key False = key
+  partialConstant XOR key True = notGate key
+  checkConstant :: GateType -> Literal v -> Literal v -> Maybe (Literal v)
+  checkConstant ty (Constant a) (Constant b) = Just $ Constant $ constants ty a b
+  checkConstant ty (Constant a) (Input b) = Just $ partialConstant ty (Input b) a
+  checkConstant ty (Input a) (Constant b) = Just $ partialConstant ty (Input a) b
+  checkConstant _ (Input _) (Input _) = Nothing
+  andGate :: SecureGate v
+  orGate :: SecureGate v
+  xorGate :: SecureGate v
+  notGate :: Literal v -> Literal v

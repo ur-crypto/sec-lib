@@ -12,7 +12,6 @@ import           Types
 -- In Bytes
 --
 
-type FixedKey = AES128
 
 cipherSize :: Int
 cipherSize = 16
@@ -91,3 +90,4 @@ bsToBools bs = concatMap bits2Bools $ BS.unpack bs
 
 numBytes :: FiniteBits a => a -> Int
 numBytes n = finiteBitSize n `quot` 8
+--
