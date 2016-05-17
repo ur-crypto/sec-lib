@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns         #-}
 {-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE MultiWayIf           #-}
 {-# LANGUAGE TypeSynonymInstances #-}
@@ -27,9 +28,11 @@ getSocket = do
 sendList :: Socket -> [(Key, Key)] -> [Bool] -> IO()
 sendList _ [] [] = return ()
 sendList soc ((kp0, kp1):kps) (b:bs)= do
-    if b
-        then SBS.sendAll soc kp1
-        else SBS.sendAll soc kp0
+    let sending = if b
+        then kp1
+        else kp0
+    SBS.sendAll soc sending
+    -- printKey (Just True) sending
     sendList soc kps bs
 
 sendList _ _ _ = return $ error "Unbalanced send list"
@@ -39,15 +42,20 @@ doWithSocket soc (inputProduce, inputConsume) test =  do
     let l = [1..finiteBitSize inputProduce + finiteBitSize inputConsume]
     rkey <- genRootKey
     fkeystr <- genFixedKey
+    -- putStr "Fkey"
+    -- printKey (Just True) fkeystr
     let fkey = initFixedKey fkeystr
     SBS.sendAll soc fkeystr
     keyList <- mapM (const (genKeyPair rkey)) l
     let (ourList, theirList) = splitAt (finiteBitSize inputProduce) keyList
     let bothList = bits2Bools inputProduce ++ bits2Bools inputConsume
+    -- putStrLn "Key List:"
     sendList soc keyList bothList
+    -- putStrLn ""
     let wrap key = Input (soc, [AES fkey, RAND rkey], return $ Producer key)
     let (ourWrappedList, theirWrappedList) = (map wrap ourList, map wrap theirList)
-    sendOutputs $ test ourWrappedList theirWrappedList
+    let !res = test ourWrappedList theirWrappedList
+    sendOutputs res
     where
     sendOutputs :: [Literal] -> IO [Bool]
     sendOutputs nodes =

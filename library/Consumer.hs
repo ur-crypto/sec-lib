@@ -42,8 +42,13 @@ doWithSocket :: FiniteBits a => Socket -> (a, a) -> SecureFunction -> IO [Bool]
 doWithSocket soc (produceInput, consumeInput) test = do
     let l = finiteBitSize produceInput + finiteBitSize consumeInput
     fkeystr <- SBS.recv soc cipherSize
+    -- putStr "Fkey"
+    -- printKey (Just False) fkeystr
     let fkey = initFixedKey fkeystr
     keyList <- receiveList l
+    -- putStrLn "Key List:"
+    -- mapM_ (printKey (Just False)) keyList
+    -- putStrLn ""
     let wrapVal k= Input (soc, [AES fkey], return (Consumer k))
     let (theirList, ourList) = splitAt (finiteBitSize produceInput) $ map wrapVal keyList
     receiveOutputs $ test theirList ourList
@@ -55,14 +60,14 @@ doWithSocket soc (produceInput, consumeInput) test = do
           where
           receiveNodes :: Literal -> IO Bool
           receiveNodes (Input (_, _, k')) = do
+              (Consumer k) <- k'
               o0 <- SBS.recv soc cipherSize
               o1 <- SBS.recv soc cipherSize
-              (Consumer k) <- k'
               SBS.sendAll soc k
               return $ if
                   | k == o0 -> False
                   | k == o1 -> True
-                  | otherwise -> error $ "Incorrect answer found: " ++ show k ++ show o0 ++ show o1
+                  | otherwise -> error $ "Incorrect answer found: " ++ keyString k ++ keyString o0 ++ keyString o1
           receiveNodes (Constant k) = return k
 
 doWithoutSocket ::FiniteBits a => (a, a) -> SecureFunction -> IO [Bool]

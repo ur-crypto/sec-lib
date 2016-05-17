@@ -41,23 +41,29 @@ bigGate ty (Input (soc, fkeys, a)) (Input (_,_,b)) =
               return $ Consumer (BS.pack $ BS.zipWith xor p q)
             _ -> do
               let [AES fkey] = fkeys
+              -- putStrLn "New Gate"
+              -- printKey (Just False) p
+              -- printKey (Just False) q
+              -- putStrLn ""
               ans <- getInput fkey p q
+              -- printKey (Just False) ans
+              -- putStrLn ""
               return $ Consumer ans
               where
                 decTruthTable fkey k1 k2 [o00, o01, o10, o11] =
-                  let k1' = BS.last k1
-                      k2' = BS.last k2 in
+                  let k1' = testBit (BS.last k1) 0
+                      k2' = testBit (BS.last k2) 0 in
                   let o = case (k1', k2') of
-                        (0, 0) -> o00
-                        (0, 1) -> o01
-                        (1, 0) -> o10
-                        (1, 1) -> o11
-                        _ -> error $ "Improper decoding of: " ++ show k1' ++ ", " ++ show k2'
+                        (False, False) -> o00
+                        (False, True) -> o01
+                        (True, False) -> o10
+                        (True, True) -> o11
                         in
                   enc fkey (k1, k2, o)
                 getInput fkey x y = do
                   tt <- getTT
                   -- mapM_ (printKey (Just False)) tt
+                  -- putStrLn ""
                   let o = decTruthTable fkey x y tt
                   return o
                   where
@@ -76,12 +82,24 @@ bigGate ty (Input (soc, fkeys, a)) (Input (_,_,b)) =
                   o2 = BS.pack $ BS.zipWith xor a0 b1 in
                   return $ Producer (o1, o2)
             _ -> do
+              -- putStrLn "New Gate"
               let [AES fkey, RAND rkey] = fkeys
               let unsorted = getTT ty (False, True) p q
               let sorted = sortBy order unsorted
+              let (p0, p1) = p
+              let (q0, q1) = q
+              -- printKey (Just True) p0
+              -- printKey (Just True) p1
+              -- printKey (Just True) q0
+              -- printKey (Just True) q1
+              -- putStrLn ""
               let o = mkKeyPair fkey rkey sorted
               let tt = map (insertKey o) sorted
               sendInfo fkey tt
+              let (o0, o1) = o
+              -- printKey (Just True) o0
+              -- printKey (Just True) o1
+              -- putStrLn ""
               return $ Producer o
               where
                   getTT AND (o0, o1) = helper o0 o0 o0 o1
@@ -90,10 +108,10 @@ bigGate ty (Input (soc, fkeys, a)) (Input (_,_,b)) =
                   helper o1 o2 o3 o4 (a0, a1) (b0, b1)=
                     [(a0, b0, o1), (a0, b1, o2), (a1, b0, o3), (a1, b1, o4)]
                   order (z1, z2, _) (z3, z4, _) =
-                    let p' = fromEnum $ BS.last z1
-                        q' = fromEnum $ BS.last z2
-                        r' = fromEnum $ BS.last z3
-                        s' = fromEnum $ BS.last z4 in
+                    let p' = testBit (BS.last z1) 0
+                        q' = testBit (BS.last z2) 0
+                        r' = testBit (BS.last z3) 0
+                        s' = testBit (BS.last z4) 0 in
                         case (compare p' r', compare q' s') of
                           (EQ, EQ) -> error "List should not contain same element"
                           (EQ, x) -> x
@@ -107,6 +125,7 @@ bigGate ty (Input (soc, fkeys, a)) (Input (_,_,b)) =
                   sendInfo fkey tt = do
                     let list = encTruthTable tt
                     -- mapM_ (printKey (Just True)) list
+                    -- putStrLn ""
                     SBS.sendMany soc list
                     where
                       encTruthTable = map (enc fkey)
