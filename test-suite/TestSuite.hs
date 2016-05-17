@@ -50,7 +50,7 @@ spec (csoc, psoc)=  do
     it "Num nand 64 True" $ listTest (O..~&.) (15 :: Int64) (20 :: Int64) ((\x y -> complement (x .&. y)) (15 :: Int64) (20 :: Int64))
     --it "Num Shift 64 True" $ listTest andShift (15 :: Int64) (20 :: Int64) ((.&.) (30 :: Int64) (20 :: Int64))
     it "Tests for constant negation" $
-        listTest (\x -> \y -> (complement $ (shiftL x 2) .&. (shiftL y 2)))
+        listTest (\x y -> (complement $ (shiftL x 2) .&. (shiftL y 2)))
             (2 ::Int8) (3 ::Int8) (complement $ (shiftL (2::Int8) 2) .&. (shiftL (3::Int8) 2))
     it "Test addition" $
         listTest (+) (1::Int16) (1::Int16) (2::Int16)
@@ -60,24 +60,24 @@ spec (csoc, psoc)=  do
         close psoc
         True `shouldBe` True
     where
-        boolTest :: FiniteBits b => (forall a. SecureFunction a) -> b -> b -> Bool -> Expectation
+        boolTest :: FiniteBits b => SecureFunction -> b -> b -> Bool -> Expectation
         boolTest test num1 num2 expect = (doTest (csoc, psoc) (num1, num2) test) `shouldReturn` [expect]
 
-        hamTest  :: FiniteBits b => (forall a. SecureFunction a) -> b -> b -> Int8 -> Expectation
+        hamTest  :: FiniteBits b => SecureFunction -> b -> b -> Int8 -> Expectation
         hamTest test inputNum inputNum2 expectedNumber = do
             ourAnswers <- (doTest (csoc, psoc) (inputNum, inputNum2) test)
             let expectAnswers = (bits2Bools expectedNumber)
             ourAnswers `shouldBe` expectAnswers
 
 
-        listTest  :: FiniteBits b => (forall a. SecureFunction a) -> b -> b -> b -> Expectation
+        listTest  :: FiniteBits b => SecureFunction -> b -> b -> b -> Expectation
         listTest test inputNum inputNum2 expectedNumber = do
             ourAnswers <- (doTest (csoc, psoc) (inputNum, inputNum2) test)
             let expectAnswers = (bits2Bools expectedNumber)
             ourAnswers `shouldBe` expectAnswers
 
         {-
-        exhaustiveTest :: (forall a. SecureFunction a) -> (forall b. FiniteBits b => b -> b -> b) -> Expectation
+        exhaustiveTest :: (forall a. SecureFunction) -> (forall b. FiniteBits b => b -> b -> b) -> Expectation
         exhaustiveTest test equivalent = do
           let nums = [minBound :: Int8 .. maxBound :: Int8]
           let numCombos = [ (x, y) | x<-nums, y<-nums ] --idk how this works but it sure is pretty

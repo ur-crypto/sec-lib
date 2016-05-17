@@ -12,7 +12,6 @@ import           Types
 -- In Bytes
 --
 
-type FixedKey = AES128
 
 cipherSize :: Int
 cipherSize = 16
@@ -40,19 +39,19 @@ genFixedKey :: IO BS.ByteString
 genFixedKey = getEntropy cipherSize
 
 genRootKey :: IO BS.ByteString
-genRootKey = getEntropy keyLength
+genRootKey = do
+  a <- getEntropy cipherSize
+  let (Just (as, al)) = BS.unsnoc a
+  return $ BS.snoc as (setBit al 0)
 
 mkKeyPairFromKey :: BS.ByteString -> BS.ByteString -> Bool -> (BS.ByteString, BS.ByteString)
-mkKeyPairFromKey rkey a sw =
+mkKeyPairFromKey rkey k0 sw =
   let
-    (Just (k0, fill)) = BS.unsnoc a
     k1 = BS.pack $ BS.zipWith xor k0 rkey
-    -- (b0, b1) = getFills $ testBit fill 0
-    (b0, b1) = getFills False
     in
     if sw
-      then (BS.concat [k1, b1], BS.concat [k0, b0])
-      else (BS.concat [k0, b0], BS.concat [k1, b1])
+      then (k1, k0)
+      else (k0, k1)
 
 genKeyPair :: BS.ByteString -> IO (BS.ByteString, BS.ByteString)
 genKeyPair rkey = do
@@ -91,3 +90,4 @@ bsToBools bs = concatMap bits2Bools $ BS.unpack bs
 
 numBytes :: FiniteBits a => a -> Int
 numBytes n = finiteBitSize n `quot` 8
+--
