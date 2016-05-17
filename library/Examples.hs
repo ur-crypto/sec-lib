@@ -100,8 +100,8 @@ ourBool [] = []
 
 logCeil :: Int -> Int
 logCeil i = case (i>1) of
-            (True) -> ceil ( logBase 2 (fromIntegral i))
-            (False) -> 2
+            (True) -> ceiling ( logBase 2 (fromIntegral i))
+            (False) -> 1
 
 editDist :: SecureFunction a
 editDist xs ys =  --let xss = (take 2 xs) 
@@ -121,7 +121,7 @@ editDistEff _ _ es _ _ = trace ("We are done exploring the graph of Nodes.") (la
 
 columnCalc :: Int -> Int -> [[Node a]]  -> [[Node a]] -> Node a -> [Node a] -> [[Node a]]
 columnCalc i j curColumn  (e1:es@(e2:es')) x (y:ys) =
-      case (j < 4) of
+      case (j < 3) of
        (True) -> let addValue = b_xor x y 
                      prev = last curColumn in
                   let (_,(carry,subTotal)) = addIntFP (logCeil (max i j)) e1 [addValue] in

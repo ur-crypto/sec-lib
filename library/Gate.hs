@@ -46,7 +46,7 @@ class LocalValue v where
         processConstant BIJ key False = process soc fkeys (Not key)
         processConstant BIJ key True = return key
     process soc fkeys (Not node) = do
-        procNode <- process soc fkeys node
+        !procNode <- process soc fkeys node
         notHandler procNode
     process _ _ x = return x
 
