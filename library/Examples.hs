@@ -106,9 +106,10 @@ logCeil i = case (i>1) of
             (True) -> ceiling ( logBase 2 (fromIntegral i))
             (False) -> 1
 
-editDist :: SecureFunction
-editDist xs ys =  let xss = (take 3 xs)
-                      yss = (take 3 ys) in
+editDist :: Int -> Int -> SecureFunction
+editDist i j xs ys =  let 
+                        xss = (take i xs)
+                        yss = (take j ys) in
                       let (_,prevCol) = initDist (length yss) in
                          editDistEff 1 [Constant False] prevCol xss yss
 
