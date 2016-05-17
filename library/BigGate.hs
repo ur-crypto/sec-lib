@@ -57,8 +57,7 @@ bigGate ty (Input (soc, fkeys, a)) (Input (_,_,b)) =
                   enc fkey (k1, k2, o)
                 getInput fkey x y = do
                   tt <- getTT
-                  putStrLn $ "Consumer: " ++ show tt
-                  putStrLn ""
+                  -- mapM_ (printKey (Just False)) tt
                   let o = decTruthTable fkey x y tt
                   return o
                   where
@@ -82,8 +81,6 @@ bigGate ty (Input (soc, fkeys, a)) (Input (_,_,b)) =
               let sorted = sortBy order unsorted
               let o = mkKeyPair fkey rkey sorted
               let tt = map (insertKey o) sorted
-              putStrLn $ "Producer: " ++ show tt
-              putStrLn ""
               sendInfo fkey tt
               return $ Producer o
               where
@@ -107,6 +104,9 @@ bigGate ty (Input (soc, fkeys, a)) (Input (_,_,b)) =
                       in mkKeyPairFromKey rkey k' oB
                   mkKeyPair _ _ _ = error "Attempting to make key pair of empty list"
                   insertKey (o0, o1) (x, y, bool) = if bool then (x, y, o1) else (x, y, o0)
-                  sendInfo fkey tt = SBS.sendMany soc $ encTruthTable tt
+                  sendInfo fkey tt = do
+                    let list = encTruthTable tt
+                    -- mapM_ (printKey (Just True)) list
+                    SBS.sendMany soc list
                     where
                       encTruthTable = map (enc fkey)

@@ -39,7 +39,10 @@ genFixedKey :: IO BS.ByteString
 genFixedKey = getEntropy cipherSize
 
 genRootKey :: IO BS.ByteString
-genRootKey = getEntropy keyLength
+genRootKey = do
+  a <- getEntropy cipherSize
+  let (Just (as, al)) = BS.unsnoc a
+  return $ BS.snoc as (setBit al 0)
 
 mkKeyPairFromKey :: BS.ByteString -> BS.ByteString -> Bool -> (BS.ByteString, BS.ByteString)
 mkKeyPairFromKey rkey a sw =
