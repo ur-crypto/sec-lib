@@ -23,7 +23,7 @@ bigGate ty (Input a) (Constant b) = partialConstant ty (Input a) b
     partialConstant OR _ True = Constant True
     partialConstant XOR key False = key
     partialConstant XOR key True = notGate key
-bigGate ty (Input (soc, fkeys, a)) (Input (_,_,b)) =
+bigGate ty (Input (soc, fkeys, !a)) (Input (_,_,!b)) =
   Input (soc, fkeys, val)
   where
     val = do
@@ -64,7 +64,7 @@ bigGate ty (Input (soc, fkeys, a)) (Input (_,_,b)) =
                   tt <- getTT
                   -- mapM_ (printKey (Just False)) tt
                   -- putStrLn ""
-                  let o = decTruthTable fkey x y tt
+                  let !o = decTruthTable fkey x y tt
                   return o
                   where
                       getTT = do
@@ -86,8 +86,8 @@ bigGate ty (Input (soc, fkeys, a)) (Input (_,_,b)) =
               let [AES fkey, RAND rkey] = fkeys
               let unsorted = getTT ty (False, True) p q
               let sorted = sortBy order unsorted
-              let (p0, p1) = p
-              let (q0, q1) = q
+              -- let (p0, p1) = p
+              -- let (q0, q1) = q
               -- printKey (Just True) p0
               -- printKey (Just True) p1
               -- printKey (Just True) q0
@@ -96,7 +96,7 @@ bigGate ty (Input (soc, fkeys, a)) (Input (_,_,b)) =
               let o = mkKeyPair fkey rkey sorted
               let tt = map (insertKey o) sorted
               sendInfo fkey tt
-              let (o0, o1) = o
+              -- let (o0, o1) = o
               -- printKey (Just True) o0
               -- printKey (Just True) o1
               -- putStrLn ""
