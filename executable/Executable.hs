@@ -24,7 +24,7 @@ doArgs ("both":_) = do
     hpsoc <- async P.getSocket
     csoc <- wait hcsoc
     psoc <- wait hpsoc
-    printTest (csoc, psoc) (1::Int8,3::Int8) hammingDist
+    printTest (csoc, psoc) (1::Int8,3::Int8) (+)
 doArgs _ = usage
 
 main :: IO()
