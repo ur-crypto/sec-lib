@@ -1,15 +1,14 @@
-{-# LANGUAGE BangPatterns #-}
 module Examples where
 import           Control.Monad.ST
 import           Data.Array
 import           Data.Array.ST
 import           Data.Bits
 import           Data.Int
+import           Debug.Trace
 import           Ops              as O
 import           Prelude          hiding (ifThenElse, ifThenElses, (&&), (||))
 import           Types
 import           Utils
-
 
 test8 :: Int8
 test8 = 35
@@ -104,38 +103,54 @@ ourBool [] = []
 
 logCeil :: Int -> Int
 logCeil i = case (i>1) of
-            (True) -> 2--1 + floor ( logBase 2 (fromIntegral i))
-            (False) -> 2--1
+            (True) -> ceiling ( logBase 2 (fromIntegral i))
+            (False) -> 1
 
 editDist :: SecureFunction
-editDist xs ys =  --let xss = (take 2 xs)
-                      let (_,!prevCol) = initDist (length ys) in
-                         editDistEff 1 [Constant False] prevCol xs ys
+editDist xs ys =  let xss = (take 4 xs)
+                      yss = (take 1 ys) in
+                      let (_,prevCol) = initDist (length yss) in
+                         editDistEff 1 [Constant False] prevCol xss yss
 
 editDistEff :: Int -> [Literal] -> [[Literal]] -> SecureFunction
 editDistEff i topValue es (x:xs) ys =
-          case (i < 3) of
-             (True) ->     let (_,(!carry,!subTotal)) = addIntFP (logCeil i) topValue [Constant True] in
-                             let !prev = [carry]++subTotal in
-                               let !updatedColumn = columnCalc i 1 [prev] prev es x ys in
+                  let (_,(carry,subTotal)) = addIntFP (logCeil i) topValue [Constant True] in
+                             let prev = [carry]++subTotal in
+                               let updatedColumn = columnCalc i 1 [prev]  es x ys in
                                   editDistEff (i+1) prev updatedColumn xs ys
-             (False) -> (last es)
-editDistEff _ _ es _ _ = (last es)
 
-columnCalc :: Int -> Int -> [[Literal]] -> [Literal] -> [[Literal]] -> Literal -> [Literal] -> [[Literal]]
-columnCalc i j curColumn prev (e1:es@(e2:es')) x (y:ys) =
-      case (j < 3) of
-       (True) -> let addValue = O.bXor x y in
-                  let (_,(!carry,!subTotal)) = addIntFP (logCeil (max i j)) e1 [addValue] in
-                   let !tempMatch = [carry]++subTotal
+editDistEff _ _ es [] _ = (last es)
+
+columnCalc :: Int -> Int -> [[Literal]]  -> [[Literal]] -> Literal -> [Literal] -> [[Literal]]
+columnCalc i j curColumn  (e1:es@(e2:es')) x (y:ys) =
+        let addValue = O.bXor x y
+            prev = last curColumn in
+                  let (_,(carry,subTotal)) = addIntFP (logCeil (max i j)) e1 [addValue] in
+                   let tempMatch = [carry]++subTotal
                        firstCompare = cmpp prev e2 in
                    let [secondCompare] = numCmps firstCompare tempMatch in
-                   let !secondMatch = if' [secondCompare] tempMatch firstCompare in
-                    let (_,(!carry2,!subTotal2)) = (addIntFP (logCeil (max i j)) secondMatch [((O.not secondCompare) || ((secondCompare) && addValue))]) in
-                    let !currentValue = [carry2]++subTotal2 in
-                      columnCalc i (j+1) (curColumn++[currentValue]) currentValue es x ys
-       (False) -> curColumn
-columnCalc _ _ curColumn _ _ _ _ = curColumn
+                   let secondMatch = ifList secondCompare tempMatch firstCompare in
+                    let (_,(carry2,subTotal2)) = (addIntFP (logCeil (max i j)) secondMatch [((O.not secondCompare) || (secondCompare && addValue))]) in
+                    let currentValue = [carry2]++subTotal2 in
+                      columnCalc i (j+1) (curColumn++[currentValue])  es x ys
+columnCalc _ _ curColumn _ _ _ = curColumn
+
+ifList :: Literal -> SecureFunction
+ifList cnd xs ys = let nbool = (O.not cnd) in
+       ifrList [] cnd nbool (reverse xs) (reverse ys)
+
+ifrList :: [Literal] -> Literal -> Literal -> SecureFunction
+ifrList l bool nbool (x:xs) (y:ys) =
+       let val = (bool && x) || (nbool && y) in
+           ifrList ([val]++l) bool nbool xs ys
+ifrList l bool nbool [] (y:ys) =
+       let val = (nbool && y) in
+           ifrList ([val]++l) bool nbool [] ys
+ifrList l bool nbool (x:xs) []  =
+       let val = (bool && x) in
+           ifrList ([val]++l) bool nbool xs []
+ifrList l _ _ _ _ = l
+
 
 editDistance :: SecureFunction
 editDistance xs ys = table ! (m,n)
@@ -240,7 +255,8 @@ edistance s t = d ! (ls , lt)
                                   writeArray m (i,j) $ foldl1 cmp [x+(O.num2Const 1), y+(O.num2Const 1), z+c ]
                 return m
 
-cmpp a b = O.if' (numCmps a b) b a
+cmpp a b = let [reslt] = numCmps a b in
+           ifList reslt b a
 cmp a b = O.if' (a O.<. b) a b
 for_ xs f =  mapM_ f xs
 
