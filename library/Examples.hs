@@ -111,7 +111,7 @@ editDist xs ys =  --let xss = (take 2 xs)
 
 editDistEff :: Int -> [Node a] -> [[Node a]] -> SecureFunction a
 editDistEff i topValue es (x:xs) ys =
-          case (i < 4) of  
+          case (i < 3) of  
              (True) ->     let (_,(carry,subTotal)) = addIntFP (logCeil i) topValue [Constant True] in
                              let prev = [carry]++subTotal in
                                let updatedColumn = columnCalc i 1 [prev]  es x ys in
@@ -121,7 +121,7 @@ editDistEff _ _ es _ _ = trace ("We are done exploring the graph of Nodes.") (la
 
 columnCalc :: Int -> Int -> [[Node a]]  -> [[Node a]] -> Node a -> [Node a] -> [[Node a]]
 columnCalc i j curColumn  (e1:es@(e2:es')) x (y:ys) =
-      case (j < 2) of
+      case (j < 3) of
        (True) -> let addValue = b_xor x y 
                      prev = last curColumn in
                   let (_,(carry,subTotal)) = addIntFP (logCeil (max i j)) e1 [addValue] in
