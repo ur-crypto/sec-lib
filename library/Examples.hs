@@ -107,8 +107,8 @@ logCeil i = case (i>1) of
             (False) -> 1
 
 editDist :: SecureFunction
-editDist xs ys =  let xss = (take 2 xs)
-                      yss = (take 2 ys) in
+editDist xs ys =  let xss = (take 3 xs)
+                      yss = (take 3 ys) in
                       let (_,prevCol) = initDist (length yss) in
                          editDistEff 1 [Constant False] prevCol xss yss
 
