@@ -13,10 +13,12 @@ type PTT = TruthTable (Key, Key, Key)
 type TruthTable a = [a,a,a,a]
 
 type FixedKey = AES128
-type SecureFunction a = LocalValue a =>  SecureNum a -> SecureNum a -> SecureNum a
-type SecureNum a = LocalValue a => [Literal a]
+type SecureGate v = Literal v -> Literal v -> Literal v
+type SecureFunction a = SecureNum a -> SecureNum a -> SecureNum a
+type SecureNum a = [Literal a]
+type FullKey a = (Socket, [KeyContext], IO a)
 data Literal a  = Constant Bool
-                | Input (Socket, [KeyContext], IO a)
+                | Input (FullKey a)
 data KeyContext = AES FixedKey
                 | RAND Key
 
@@ -28,20 +30,20 @@ constants OR a b = (||) a b
 constants XOR a b = if a then not b else b
 
 
-type SecureGate v = LocalValue v => Literal v -> Literal v -> Literal v
-class LocalValue v where
-  partialConstant :: GateType -> Literal v -> Bool -> Literal v
-  partialConstant AND _ False = Constant False
-  partialConstant AND key True = key
-  partialConstant OR key False = key
-  partialConstant OR _ True = Constant True
-  partialConstant XOR key False = key
-  partialConstant XOR key True = notGate key
-  checkConstant :: GateType -> Literal v -> Literal v -> Maybe (Literal v)
-  checkConstant ty (Constant a) (Constant b) = Just $ Constant $ constants ty a b
-  checkConstant ty (Constant a) (Input b) = Just $ partialConstant ty (Input b) a
-  checkConstant ty (Input a) (Constant b) = Just $ partialConstant ty (Input a) b
-  checkConstant _ (Input _) (Input _) = Nothing
+
+partialConstant :: GateType -> Literal v -> Bool -> Literal v
+partialConstant AND _ False = Constant False
+partialConstant AND key True = key
+partialConstant OR key False = key
+partialConstant OR _ True = Constant True
+partialConstant XOR key False = key
+partialConstant XOR key True = notGate key
+checkConstant :: GateType -> Literal v -> Literal v -> Maybe (Literal v)
+checkConstant ty (Constant a) (Constant b) = Just $ Constant $ constants ty a b
+checkConstant ty (Constant a) (Input b) = Just $ partialConstant ty (Input b) a
+checkConstant ty (Input a) (Constant b) = Just $ partialConstant ty (Input a) b
+checkConstant _ (Input _) (Input _) = Nothing
+class Circuitable v where
   defaultGate :: SecureGate v
   andGate :: SecureGate v
   andGate = defaultGate

@@ -23,10 +23,10 @@ not :: LocalValue a => Literal a -> Literal a
 not = notGate
 
 --Bit macros
-(.~&.) :: SecureFunction
+(.~&.) :: SecureFunction a
 (.~&.) = zipWith nand
 
-(<.) :: SecureFunction
+(<.) :: SecureFunction a
 (<.) as bs = [imp as bs]
     where
     imp :: SecureNum a -> SecureNum a -> Literal a
@@ -39,9 +39,9 @@ not = notGate
            ifThenElse ( n1 && nbool) n1 (ifThenElse (mbool && n2) n1 (imp n1s n2s))
     imp _ _ = error "Bad args for imp"
 
-(==.) :: SecureFunction
+(==.) :: SecureFunction a
 (==.) n1 n2 = [foldl1 (&&) (zipWith bij n1 n2)]
-(/=.) :: SecureFunction
+(/=.) :: SecureFunction a
 (/=.) a b = complement (a ==. b)
 
 --If Then Else Macro
@@ -94,5 +94,5 @@ subCompute (p1:p1s) (g1:g1s) =
           (len+1,((bXor g1 (carry && p1)),(((bXor p1 carry):[])++prevcarry)))
 subCompute _ _ = error "unbalanced inputs"
 
-instance Num (SecureNum x) where
+instance Num (SecureNum Key) where
     (+) = addInt
