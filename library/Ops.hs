@@ -46,7 +46,7 @@ not = Not
 --If Then Else Macro
 ifThenElse :: Node a -> Node a -> Node a -> Node a
 ifThenElse bool tb fb =
-    let nbool = Gate NAND bool bool in
+    let nbool = Not bool in
     ((bool && tb) || (nbool && fb))
 
 if' :: SecureNum a -> SecureNum a -> SecureNum a -> SecureNum a
@@ -61,11 +61,11 @@ extendBy n x = (map (\_->Constant False) [0..n-1]) ++ x
 
 --add def
 addInt :: [Node a1] -> [Node a1] -> [Node a1]
-addInt m n = let (_,(_,subTotal)) =  addIntFP 5 m n in
+addInt m n = let (_,(_,subTotal)) =  addIntFP (length m) m n in
                            subTotal
 
 addIntFP :: Int -> [Node a1] -> [Node a1] -> (Int, (Node a1, [Node a1]))
-addIntFP _ [n1] [n2] = (1,(n1 && n2,((Gate XOR n1 n2):[])))
+addIntFP _ [n1] [n2] = (1,(n1 && n2,((b_xor n1 n2):[])))
 addIntFP p (n1:n1s) (n2:n2s) =
   let m1 = 1+(length n1s)
       m2 = 1+(length n2s) in
@@ -81,16 +81,16 @@ addIntFP p (n1:n1s) (n2:n2s) =
                                              propogate = xor (n1:n1s) (n2:n2s) in
                                              subCompute propogate generate
           (False,False,True,_)        -> let (len,(carry,resltsum)) = addIntFP p n1s (n2:n2s) in
-                                         (len+1,((carry && n1),((Gate XOR n1 carry):[])++resltsum))
+                                         (len+1,((carry && n1),((b_xor n1 carry):[])++resltsum))
           (False,False,False,True)    -> let (len,(carry,resltsum)) = addIntFP p (n1:n1s) n2s in
-                                         (len+1,((carry && n2),((Gate XOR n2 carry):[])++resltsum))
+                                         (len+1,((carry && n2),((b_xor n2 carry):[])++resltsum))
 addIntFP _ _ _ = error "unbalanced inputs"
 
 subCompute :: [Node a] -> [Node a] -> (Int, (Node a, [Node a]))
 subCompute [p1] [g1]  = (1,(g1,p1:[]))
 subCompute (p1:p1s) (g1:g1s) =
       let (len,(carry,prevcarry)) = subCompute p1s g1s in
-          (len+1,((Gate XOR g1 (carry && p1)),(((Gate XOR p1 carry):[])++prevcarry)))
+          (len+1,((b_xor g1 (carry && p1)),(((b_xor p1 carry):[])++prevcarry)))
 subCompute _ _ = error "unbalanced inputs"
 
 instance Num (SecureNum a) where
