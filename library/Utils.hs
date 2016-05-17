@@ -46,8 +46,8 @@ mkKeyPairFromKey rkey a sw =
   let
     (Just (k0, fill)) = BS.unsnoc a
     k1 = BS.pack $ BS.zipWith xor k0 rkey
-    -- (b0, b1) = getFills $ testBit fill 0
-    (b0, b1) = getFills False
+    (b0, b1) = getFills $ testBit fill 0
+    -- (b0, b1) = getFills False
     in
     if sw
       then (BS.concat [k1, b1], BS.concat [k0, b0])

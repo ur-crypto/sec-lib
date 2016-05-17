@@ -3,33 +3,35 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 module Ops where
 import           Data.Bits
+import           Gate
+import           NotGate
 import           Prelude   hiding (not, (&&), (||))
 import           Types
 import           Utils
 
 --Gate Macros
 
-(&&) :: SecureGate a
+(&&) :: SecureGate
 (&&) = andGate
-(||) :: SecureGate a
+(||) :: SecureGate
 (||) = orGate
-bXor :: SecureGate a
+bXor :: SecureGate
 bXor = xorGate
-nand :: SecureGate a
+nand :: SecureGate
 nand a b = notGate $ andGate a b
-bij :: SecureGate a
+bij :: SecureGate
 bij a b = notGate $ xorGate a b
-not :: LocalValue a => Literal a -> Literal a
+not :: Literal -> Literal
 not = notGate
 
 --Bit macros
-(.~&.) :: SecureFunction a
+(.~&.) :: SecureFunction
 (.~&.) = zipWith nand
 
-(<.) :: SecureFunction a
+(<.) :: SecureFunction
 (<.) as bs = [imp as bs]
     where
-    imp :: SecureNum a -> SecureNum a -> Literal a
+    imp :: SecureNum -> SecureNum -> Literal
     imp [n1] [n2] =
            let nbool = not n2 in
            n1 && nbool
@@ -39,33 +41,33 @@ not = notGate
            ifThenElse ( n1 && nbool) n1 (ifThenElse (mbool && n2) n1 (imp n1s n2s))
     imp _ _ = error "Bad args for imp"
 
-(==.) :: SecureFunction a
+(==.) :: SecureFunction
 (==.) n1 n2 = [foldl1 (&&) (zipWith bij n1 n2)]
-(/=.) :: SecureFunction a
+(/=.) :: SecureFunction
 (/=.) a b = complement (a ==. b)
 
 --If Then Else Macro
-ifThenElse :: Literal a -> Literal a -> Literal a -> Literal a
+ifThenElse :: Literal -> Literal -> Literal -> Literal
 ifThenElse bool tb fb =
     let nbool = not bool in
     ((bool && tb) || (nbool && fb))
 
-if' :: SecureNum a -> SecureNum a -> SecureNum a -> SecureNum a
+if' :: SecureNum -> SecureNum -> SecureNum -> SecureNum
 if' bools= zipWith (ifThenElse (foldl1 (||) bools))
 
-num2Const :: Int -> SecureNum a
+num2Const :: Int -> SecureNum
 num2Const n = map Constant (bits2Bools n)
 
-extendBy :: Int -> SecureNum a -> SecureNum a
+extendBy :: Int -> SecureNum -> SecureNum
 extendBy n x = (map (\_->Constant False) [0..n-1]) ++ x
 
 
 --add def
-addInt :: [Literal a1] -> [Literal a1] -> [Literal a1]
+addInt :: [Literal] -> [Literal] -> [Literal]
 addInt m n = let (_,(_,subTotal)) =  addIntFP (length m) m n in
                            subTotal
 
-addIntFP :: Int -> [Literal a1] -> [Literal a1] -> (Int, (Literal a1, [Literal a1]))
+addIntFP :: Int -> [Literal] -> [Literal] -> (Int, (Literal, [Literal]))
 addIntFP _ [n1] [n2] = (1,(n1 && n2,((bXor n1 n2):[])))
 addIntFP p (n1:n1s) (n2:n2s) =
   let m1 = 1+(length n1s)
@@ -87,12 +89,12 @@ addIntFP p (n1:n1s) (n2:n2s) =
                                          (len+1,((carry && n2),((bXor n2 carry):[])++resltsum))
 addIntFP _ _ _ = error "unbalanced inputs"
 
-subCompute :: [Literal a] -> [Literal a] -> (Int, (Literal a, [Literal a]))
+subCompute :: [Literal] -> [Literal] -> (Int, (Literal, [Literal]))
 subCompute [p1] [g1]  = (1,(g1,p1:[]))
 subCompute (p1:p1s) (g1:g1s) =
       let (len,(carry,prevcarry)) = subCompute p1s g1s in
           (len+1,((bXor g1 (carry && p1)),(((bXor p1 carry):[])++prevcarry)))
 subCompute _ _ = error "unbalanced inputs"
 
-instance Num (SecureNum Key) where
+instance Num (SecureNum) where
     (+) = addInt

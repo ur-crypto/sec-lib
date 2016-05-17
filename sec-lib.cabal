@@ -27,6 +27,8 @@ library
         TestUtils
         Ops
         Gate
+        BigGate
+        NotGate
     build-depends:
         base ==4.8.*,
         entropy,
