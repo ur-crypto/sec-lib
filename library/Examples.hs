@@ -104,35 +104,31 @@ logCeil i = case (i>1) of
             (False) -> 1
 
 editDist :: SecureFunction a
-editDist xs ys =  --let xss = (take 2 xs) 
-                    --  yss = (take 2 ys) in
-                      let (_,prevCol) = initDist (length ys) in
-                         editDistEff 1 [Constant False] prevCol xs ys
+editDist xs ys =  let xss = (take 4 xs) 
+                      yss = (take 1 ys) in
+                      let (_,prevCol) = initDist (length yss) in
+                         editDistEff 1 [Constant False] prevCol xss yss
 
 editDistEff :: Int -> [Node a] -> [[Node a]] -> SecureFunction a
 editDistEff i topValue es (x:xs) ys =
-          case (i < 4) of  
-             (True) ->     let (_,(carry,subTotal)) = addIntFP (logCeil i) topValue [Constant True] in
+                  let (_,(carry,subTotal)) = addIntFP (logCeil i) topValue [Constant True] in
                              let prev = [carry]++subTotal in
                                let updatedColumn = columnCalc i 1 [prev]  es x ys in
                                   editDistEff (i+1) prev updatedColumn xs ys
-             (False) -> trace ("We are done exploring the graph of Nodes.") (last es)
-editDistEff _ _ es _ _ = trace ("We are done exploring the graph of Nodes.") (last es)
+editDistEff _ _ es [] _ = (last es)
 
 columnCalc :: Int -> Int -> [[Node a]]  -> [[Node a]] -> Node a -> [Node a] -> [[Node a]]
 columnCalc i j curColumn  (e1:es@(e2:es')) x (y:ys) =
-      case (j < 3) of
-       (True) -> let addValue = b_xor x y 
-                     prev = last curColumn in
+        let addValue = b_xor x y 
+            prev = last curColumn in
                   let (_,(carry,subTotal)) = addIntFP (logCeil (max i j)) e1 [addValue] in
                    let tempMatch = [carry]++subTotal 
                        firstCompare = cmpp prev e2 in
                    let [secondCompare] = numCmps firstCompare tempMatch in
                    let secondMatch = ifList secondCompare tempMatch firstCompare in
-                    let (_,(carry2,subTotal2)) = (addIntFP (logCeil (max i j)) secondMatch [((Not secondCompare) || ((secondCompare) && addValue))]) in
-                    let currentValue = trace  ("Processing dynamic program entry "++show i++","++show j) [carry2]++subTotal2 in
+                    let (_,(carry2,subTotal2)) = (addIntFP (logCeil (max i j)) secondMatch [((Not secondCompare) || (secondCompare && addValue))]) in
+                    let currentValue = [carry2]++subTotal2 in
                       columnCalc i (j+1) (curColumn++[currentValue])  es x ys 
-       (False) -> curColumn
 columnCalc _ _ curColumn _ _ _ = curColumn 
 
 ifList :: Node a -> SecureFunction a
