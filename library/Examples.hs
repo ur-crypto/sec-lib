@@ -109,8 +109,8 @@ editDist xs ys =  let xss = (take 4 xs)
                       let (_,prevCol) = initDist (length yss) in
                          editDistEff 1 [Constant False] prevCol xss yss
 
-editDistEff :: Int -> [Node a] -> [[Node a]] -> SecureFunction a
-editDistEff i topValue es (x:xs) ys =
+editDistEff :: Int  -> [Node a] -> [[Node a]] -> SecureFunction a
+editDistEff i j topValue es (x:xs) ys =
                   let (_,(carry,subTotal)) = addIntFP (logCeil i) topValue [Constant True] in
                              let prev = [carry]++subTotal in
                                let updatedColumn = columnCalc i 1 [prev]  es x ys in
