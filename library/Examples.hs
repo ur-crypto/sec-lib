@@ -4,6 +4,7 @@ import           Data.Array
 import           Data.Array.ST
 import           Data.Bits
 import           Data.Int
+import           Data.List.Split
 import           Debug.Trace
 import           Ops              as O
 import           Prelude          hiding (ifThenElse, ifThenElses, (&&), (||))
@@ -41,6 +42,11 @@ testb64 = 744073709551616
 test64 :: Int64
 test64 = 395648674974903
 
+testmax :: Int64
+testmax = 18446744073709551615
+
+testmin :: Int64
+testmin = 0
 
 --andShift :: SecureFunction
 --andShift xs ys = (O.shiftL 1 xs) O..&. ys
@@ -60,19 +66,17 @@ numCmps as bs = [(imp as bs)]
                     (False,True)  -> (O.not n2) && (imp (n1:n1s) n2s)
     imp _ _ = error "Bad args for imp"
 
+           
 
-numCmp :: SecureFunction
-numCmp as bs = [imp as bs]
+numCmpEff :: [Literal] -> [Literal] -> [Literal] 
+numCmpEff as bs = [imp (Constant False) (reverse as) (reverse bs)]
     where
-    imp :: [Literal] -> [Literal] -> Literal
-    imp [n1] [n2] =
-           let nbool = O.not n2 in
-           n1 && nbool
-    imp (n1:n1s) (n2:n2s) =
-           let nbool = O.not n2
-               mbool = O.not n1 in
-           ifThenElse ( n1 && nbool) n1 (ifThenElse (mbool && n2) n1 (imp n1s n2s))
-    imp _ _ = error "Bad args for imp"
+    imp :: Literal -> [Literal] -> [Literal] -> Literal
+    imp reslt (n1:n1s) (n2:n2s) = imp (((O.bXor n1 n2) && n1) || reslt) n1s n2s
+    imp reslt [] [] = reslt
+    imp reslt [] n2s = (O.not (foldl1 (||) n2s)) && reslt
+    imp reslt n1s [] = (foldl1 (||) n1s) || reslt
+    imp _ _ _ = error "Bad args for imp"
 
 numEqs :: [Literal] -> [Literal] -> Literal
 numEqs n1 n2 = foldl1 (&&) (zipWith bij n1 n2)
@@ -80,14 +84,24 @@ numEqs n1 n2 = foldl1 (&&) (zipWith bij n1 n2)
 numEq :: SecureFunction
 numEq n1 n2 = [foldl1 (&&) (zipWith bij n1 n2)]
 
+hammingDistEff :: [Literal] -> [Literal] -> [Literal]
+hammingDistEff n1 n2 = let difference = xor n1 n2 in
+                           recAdd 1 (map (\[x,y] -> (addIntEff 1 [x] [y])) . chunksOf 2 $ difference)  
+      where
+          recAdd :: Int -> [[Literal]] -> [Literal]
+          recAdd p (n:ns) = case ((length ns) > 0) of
+                 (True) -> recAdd (1+p) (map (\[x,y] -> (addIntEff (1+p) x y)) . chunksOf 2 $ (n:ns))
+                 (False) -> n
+          recAdd p [n] = n
+
 hammingDist :: SecureFunction
 hammingDist n1 n2 = let difference = xor n1 n2 in
-                        let (len,distance) = hammingWeight (length n1) difference in
+                        let distance = hammingWeight (length n1) difference in
                             (Constant False:[])++distance
 
-
-hammingWeight :: Int -> [Literal] -> (Int, [Literal])
-hammingWeight p n =
+{-
+hammingWeightEff :: Int -> [Literal] -> [Literal]
+hammingWeightEff p n =
     case (p>1) of
          (True)     ->    let (leftHalf,rightHalf) = splitAt (quot p 2) n in
                                let (lenleft,subleft) = hammingWeight (quot p 2) leftHalf
@@ -95,11 +109,26 @@ hammingWeight p n =
                                     let (len,(carry,subTotal)) = addIntFP 6 subleft subright in
                                           (len+1,((carry:[])++subTotal))
          (False)    ->    (1,n)
+-}
+
+hammingWeight :: Int -> [Literal] -> [Literal]
+hammingWeight p n =
+    case (p>1) of
+         (True)     ->    let (leftHalf,rightHalf) = splitAt (quot p 2) n in
+                               let subleft = hammingWeight (quot p 2) leftHalf
+                                   subright = hammingWeight (quot p 2) rightHalf in
+                                       --addIntFP p subleft subright 
+                                   let (_,(carry,subTotal)) = addIntFP 6 subleft subright in
+                                          ((carry:[])++subTotal)
+         (False)    ->    n
 
 ourBool (n1:n1s) = case n1 of
                        (True)   ->    ((Constant True):[]) ++ (ourBool n1s)
                        (False)  ->    ((Constant False):[]) ++ (ourBool n1s)
 ourBool [] = []
+
+
+
 
 logCeil :: Int -> Int
 logCeil i = case (i>1) of
@@ -115,10 +144,9 @@ editDist i j xs ys =  let
 
 editDistEff :: Int -> [Literal] -> [[Literal]] -> SecureFunction
 editDistEff i topValue es (x:xs) ys =
-                  let (_,(carry,subTotal)) = addIntFP (logCeil i) topValue [Constant True] in
-                             let prev = [carry]++subTotal in
-                               let updatedColumn = columnCalc i 1 [prev]  es x ys in
-                                  editDistEff (i+1) prev updatedColumn xs ys
+                  let prev = addIntEff (logCeil i) topValue [Constant True] in
+                         let updatedColumn = columnCalc i 1 [prev]  es x ys in
+                              editDistEff (i+1) prev updatedColumn xs ys
 
 editDistEff _ _ es [] _ = (last es)
 
@@ -126,13 +154,11 @@ columnCalc :: Int -> Int -> [[Literal]]  -> [[Literal]] -> Literal -> [Literal] 
 columnCalc i j curColumn  (e1:es@(e2:es')) x (y:ys) =
         let addValue = O.bXor x y
             prev = last curColumn in
-                  let (_,(carry,subTotal)) = addIntFP (logCeil (max i j)) e1 [addValue] in
-                   let tempMatch = [carry]++subTotal
-                       firstCompare = cmpp prev e2 in
-                   let [secondCompare] = numCmps firstCompare tempMatch in
-                   let secondMatch = ifList secondCompare tempMatch firstCompare in
-                    let (_,(carry2,subTotal2)) = (addIntFP (logCeil (max i j)) secondMatch [((O.not secondCompare) || (secondCompare && addValue))]) in
-                    let currentValue = [carry2]++subTotal2 in
+                  let tempMatch = addIntEff (logCeil (max i j)) e1 [addValue] 
+                      firstCompare = cmpp prev e2 in
+                   let [secondCompare] = numCmpEff firstCompare tempMatch in
+                   let secondMatch = ifzip secondCompare tempMatch firstCompare in
+                    let currentValue = (addIntEff (logCeil (max i j)) secondMatch [((O.not secondCompare) || (secondCompare && addValue))]) in
                       columnCalc i (j+1) (curColumn++[currentValue])  es x ys
 columnCalc _ _ curColumn _ _ _ = curColumn
 
@@ -152,7 +178,18 @@ ifrList l bool nbool (x:xs) []  =
            ifrList ([val]++l) bool nbool xs []
 ifrList l _ _ _ _ = l
 
+ifWithPadding :: [Literal] -> [Literal] -> [Literal]
+ifWithPadding (x:xs) (y:ys) = (x || y) : ifWithPadding xs ys
+ifWithPadding []     ys     =  ys
+ifWithPadding xs     []     =  xs 
 
+ifzip :: Literal -> SecureFunction
+ifzip cnd xs ys = let nbool = (O.not cnd) in
+       let firstList = map (&& cnd) xs
+           secondList = map (&& nbool) ys in
+           reverse (ifWithPadding firstList secondList)
+
+{-
 editDistance :: SecureFunction
 editDistance xs ys = table ! (m,n)
     where
@@ -171,6 +208,7 @@ editDistance xs ys = table ! (m,n)
                                           (if' (numCmps (table ! (i-1,j-1)) ((carry:[])++intermed)) ((carry:[])++intermed) (table ! (i-1,j))) in
                               let (l1,(b1,a1)) = addIntFP 4 result ((Constant True):[]) in
                               (b1:[])++a1
+-}
 
 ueand :: [Literal] -> [Literal] -> [Literal]
 ueand (n1:n1s) [] = let reslt = ueand n1s [] in
@@ -256,11 +294,14 @@ edistance s t = d ! (ls , lt)
                                   writeArray m (i,j) $ foldl1 cmp [x+(O.num2Const 1), y+(O.num2Const 1), z+c ]
                 return m
 
-cmpp a b = let [reslt] = numCmps a b in
-           ifList reslt b a
+cmpp a b = let [reslt] = numCmpEff a b in
+           ifzip reslt b a
 cmp a b = O.if' (a O.<. b) a b
 for_ xs f =  mapM_ f xs
 
+edisteff xs ys = let xss = (take 2 xs)
+                     yss = (take 2 ys) in
+                     edist xss yss 
 
 edist :: SecureFunction
 edist s1 s2 = iter s1 s2 ls2 where
@@ -285,3 +326,24 @@ initDist a = case (a>0) of
                                       let nxtt = [carry]++subTotal in
                                           (nxtt,(dist++[nxtt]))
                  (False)    ->    ([Constant False],[[Constant False]])
+
+
+
+addIntEff :: Int -> [Literal] -> [Literal] -> [Literal]
+addIntEff p n1s n2s = let l1 = length n1s
+                          l2 = length n2s in
+                          let m1s = (replicate (max 0 (l2 - l1)) (Constant False))++n1s 
+                              m2s = (replicate (max 0 (l1 - l2)) (Constant False))++n2s in
+                              let generate = m1s .&. m2s
+                                  propogate = xor m1s m2s in
+                                    imp p (Constant False) (reverse propogate) (reverse generate)
+    where
+    imp :: Int -> Literal -> [Literal] -> [Literal] -> [Literal]
+    imp p carry (n1:n1s) (n2:n2s) = (imp (p-1) (O.bXor n2 (n1 && carry)) n1s n2s) ++ [(O.bXor carry n1)]
+    imp 0 carry _ _ = [carry]
+    imp p carry [] [] = [carry]
+    --imp p carry (n1:n1s) [] = (imp (p-1) (n1 && carry) n1s []) ++ [(O.bXor n1 carry)]
+    --imp p carry [] n2s = imp p carry n2s []
+    
+ 
+
