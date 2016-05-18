@@ -17,4 +17,4 @@ cabal.sandbox.config
 *.swp
 *.nfs*
 profs
-
+profiling
