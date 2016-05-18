@@ -25,9 +25,9 @@ type FixedKey = AES128
 type GenKey a = (Socket, [KeyContext], IO a)
 
 data KeyType = Consumer  Key
-             | Producer (Key, Key)
+             | Producer (Key, Key) deriving (Eq)
 
 data KeyContext = AES FixedKey
                 | RAND Key
 
-data GateType = AND | OR | XOR
+data GateType = AND | OR | XOR deriving (Show)

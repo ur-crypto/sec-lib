@@ -29,11 +29,20 @@ bigGate ty (Input (soc, fkeys, !a)) (Input (_,_,!b)) =
     val = do
       !a' <- a
       !b' <- b
-      case (a', b') of
-        (Producer x, Producer y) -> doProducer x y
-        (Consumer x, Consumer y) -> doConsumer x y
-        (Consumer _, Producer _) -> error "Should not combine types"
-        (Producer _, Consumer _) -> error "Should not combine types"
+      if a' == b'
+        then
+          case ty of
+            AND -> return a'
+            OR -> return a'
+            XOR ->
+              let Input (_, _, na) = notGate (Input (soc, fkeys, a)) in
+              na
+        else
+          case (a', b') of
+            (Producer x, Producer y) -> doProducer x y
+            (Consumer x, Consumer y) -> doConsumer x y
+            (Consumer _, Producer _) -> error "Should not combine types"
+            (Producer _, Consumer _) -> error "Should not combine types"
       where
         doConsumer p q =
           case ty of
@@ -41,7 +50,7 @@ bigGate ty (Input (soc, fkeys, !a)) (Input (_,_,!b)) =
               return $ Consumer (BS.pack $ BS.zipWith xor p q)
             _ -> do
               let [AES fkey] = fkeys
-              -- putStrLn "New Gate"
+              -- print ty
               -- printKey (Just False) p
               -- printKey (Just False) q
               -- putStrLn ""

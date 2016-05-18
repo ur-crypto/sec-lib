@@ -4,12 +4,13 @@ import           Data.Array
 import           Data.Array.ST
 import           Data.Bits
 import           Data.Int
+import           Data.LargeWord
+import           Data.Word
 import           Debug.Trace
 import           Ops              as O
 import           Prelude          hiding (ifThenElse, ifThenElses, (&&), (||))
 import           Types
 import           Utils
-
 test8 :: Int8
 test8 = 35
 
@@ -40,6 +41,12 @@ testb64 = 744073709551616
 
 test64 :: Int64
 test64 = 395648674974903
+
+test128 :: Word128
+test128 = LargeKey (14375142357289042 :: Word64) (129467138759104 :: Word64)
+
+testb128 :: Word128
+testb128 = LargeKey (384902357290471 :: Word64) (194781841240187 :: Word64)
 
 
 --andShift :: SecureFunction
@@ -107,7 +114,7 @@ logCeil i = case (i>1) of
             (False) -> 1
 
 editDist :: Int -> Int -> SecureFunction
-editDist i j xs ys =  let 
+editDist i j xs ys =  let
                         xss = (take i xs)
                         yss = (take j ys) in
                       let (_,prevCol) = initDist (length yss) in
