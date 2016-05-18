@@ -8,6 +8,7 @@ import qualified Network.Socket.ByteString   as SBS
 import           NotGate
 import           Types
 import           Utils
+import           Debug.Trace
 
 bigGate :: GateType -> SecureGate
 bigGate ty (Constant a) (Constant b) =
@@ -63,13 +64,12 @@ bigGate ty (Input (soc, fkeys, !a)) (Input (_,_,!b)) =
                   enc fkey (k1, k2, o)
                 getInput fkey x y = do
                   tt <- getTT
-                  -- mapM_ (printKey (Just False)) tt
-                  -- putStrLn ""
-                  let !o = decTruthTable fkey x y tt
+                  let !o = --trace(" We are processing gate"++(show tt)++"---"++(show x)++","++(show y)) 
+                           decTruthTable fkey x y tt
                   return o
                   where
                       getTT = do
-                          byteTT <- SBS.recv soc (4 * cipherSize)
+                          byteTT <- trace( " I am here now. ")SBS.recv soc (4 * cipherSize)
                           let (x1, r1) = BS.splitAt cipherSize byteTT
                           let (x2, r2) = BS.splitAt cipherSize r1
                           let (x3, x4) = BS.splitAt cipherSize r2
