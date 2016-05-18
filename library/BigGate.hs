@@ -1,9 +1,10 @@
 {-# LANGUAGE BangPatterns #-}
 module BigGate where
+import           Control.Parallel.Strategies
 import           Data.Bits
-import qualified Data.ByteString           as BS
+import qualified Data.ByteString             as BS
 import           Data.List
-import qualified Network.Socket.ByteString as SBS
+import qualified Network.Socket.ByteString   as SBS
 import           NotGate
 import           Types
 import           Utils
@@ -76,7 +77,7 @@ bigGate ty (Input (soc, fkeys, !a)) (Input (_,_,!b)) =
         doProducer p q = do
           case ty of
             XOR -> do
-              let (a0, a1) = p
+              let (a0, _) = p
                   (b0, b1) = q
               let o1 = BS.pack $ BS.zipWith xor a0 b0
                   o2 = BS.pack $ BS.zipWith xor a0 b1 in
@@ -128,4 +129,4 @@ bigGate ty (Input (soc, fkeys, !a)) (Input (_,_,!b)) =
                     -- putStrLn ""
                     SBS.sendMany soc list
                     where
-                      encTruthTable = map (enc fkey)
+                      encTruthTable = parMap rdeepseq (enc fkey)
