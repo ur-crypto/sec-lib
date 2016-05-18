@@ -132,14 +132,14 @@ ourBool [] = []
 
 logCeil :: Int -> Int
 logCeil i = case (i>1) of
-            (True) -> ceiling ( logBase 2 (fromIntegral i))
+            (True) ->  ceiling ( logBase 2 (fromIntegral (i+1)))
             (False) -> 1
 
 editDist :: Int -> Int -> SecureFunction
 editDist i j xs ys =  let 
                         xss = (take i xs)
                         yss = (take j ys) in
-                      let (_,prevCol) = initDist (length yss) in
+                        let prevCol = initDistEff (length yss) in
                          editDistEff 1 [Constant False] prevCol xss yss
 
 editDistEff :: Int -> [Literal] -> [[Literal]] -> SecureFunction
@@ -327,16 +327,23 @@ initDist a = case (a>0) of
                                           (nxtt,(dist++[nxtt]))
                  (False)    ->    ([Constant False],[[Constant False]])
 
-
+initDistEff :: Int -> [[Literal]]
+initDistEff a = [Constant False]: (imp 1 a [Constant False])
+    where
+    imp :: Int -> Int -> [Literal] -> [[Literal]]
+    imp p a currentNum = case (p > a) of
+            (False) -> let nextNum = addIntEff (logCeil p) currentNum [Constant True] in
+                       nextNum : (imp (p+1) a nextNum)
+            (True) -> []
 
 addIntEff :: Int -> [Literal] -> [Literal] -> [Literal]
 addIntEff p n1s n2s = let l1 = length n1s
                           l2 = length n2s in
-                          let m1s = (replicate (max 0 (l2 - l1)) (Constant False))++n1s 
-                              m2s = (replicate (max 0 (l1 - l2)) (Constant False))++n2s in
+                          let m1s = take (min (max l1 l2) p) (  reverse ((replicate (max 0 (l2 - l1)) (Constant False))++n1s)) 
+                              m2s = take (min (max l1 l2) p) (  reverse ((replicate (max 0 (l1 - l2)) (Constant False))++n2s)) in
                               let generate = m1s .&. m2s
                                   propogate = xor m1s m2s in
-                                    imp p (Constant False) (reverse propogate) (reverse generate)
+                                    imp p (Constant False) propogate generate
     where
     imp :: Int -> Literal -> [Literal] -> [Literal] -> [Literal]
     imp p carry (n1:n1s) (n2:n2s) = (imp (p-1) (O.bXor n2 (n1 && carry)) n1s n2s) ++ [(O.bXor carry n1)]
