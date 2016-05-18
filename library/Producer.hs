@@ -5,9 +5,6 @@
 module Producer where
 import           Control.Concurrent
 import           Data.Bits
-import qualified Data.ByteString           as BS
-import           Data.List
-import           Gate
 import           Network.Socket
 import qualified Network.Socket.ByteString as SBS
 import           Types
@@ -58,8 +55,8 @@ doWithSocket soc (inputProduce, inputConsume) test =  do
     sendOutputs res
     where
     sendOutputs :: [Literal] -> IO [Bool]
-    sendOutputs nodes =
-        mapM sendNodes nodes
+    sendOutputs =
+        mapM sendNodes
         where
         sendNodes :: Literal -> IO Bool
         sendNodes (Input k) = do
