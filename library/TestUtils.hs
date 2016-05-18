@@ -9,7 +9,7 @@ import           Network.Socket
 import qualified Producer                 as P
 import           Types
 
-doTest :: FiniteBits b => (Socket, Socket) -> (b, b) -> (forall a. SecureFunction a) -> IO [Bool]
+doTest :: FiniteBits b => (Socket, Socket) -> (b, b) -> (forall a. SecureFunction) -> IO [Bool]
 doTest (csoc, psoc) (inputProduce, inputConsume) test = do
     conOutHandle <- asyncBound $ C.doWithSocket csoc (inputProduce, inputConsume) test
     proOutHandle <- asyncBound $ P.doWithSocket psoc (inputProduce, inputConsume) test
@@ -25,7 +25,7 @@ doTest (csoc, psoc) (inputProduce, inputConsume) test = do
             print con
             error "disagreement on answer"
 
-printTest :: FiniteBits b => (Socket, Socket) -> (b, b) -> (forall a. SecureFunction a) -> IO ()
+printTest :: FiniteBits b => (Socket, Socket) -> (b, b) -> (forall a. SecureFunction) -> IO ()
 printTest (csoc, psoc) (a, b) test = do
     putStrLn "Starting Test"
 --    countGates (finiteBitSize a) test -- doesnt work?
