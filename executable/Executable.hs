@@ -25,14 +25,12 @@ doArgs ("both":_) = do
     csoc <- wait hcsoc
     psoc <- wait hpsoc
     --printTest (csoc, psoc) (testmax, testmin) (hammingDistEff)
-    printTest (csoc, psoc) (1::Int8,3::Int8) (editDist 2 1)
-    printTest (csoc, psoc) (1::Int8,3::Int8) (editDist 1 2)
-    printTest (csoc, psoc) (1::Int8,3::Int8) (editDist 2 2)
-    printTest (csoc, psoc) (1::Int8,3::Int8) (editDist 3 1)
-    printTest (csoc, psoc) (1::Int8,3::Int8) (editDist 1 3)
-    printTest (csoc, psoc) (1::Int8,3::Int8) (editDist 4 1)
-    printTest (csoc, psoc) (1::Int8,3::Int8) (editDist 1 4)
-    printTest (csoc, psoc) (1::Int8,3::Int8) (editDist 3 2)
+    printTest (csoc, psoc) (1::Int8,3::Int8) (myEditDist 2 1)
+    printTest (csoc, psoc) (1::Int8,3::Int8) (myEditDist 1 2)
+    printTest (csoc, psoc) (1::Int8,3::Int8) (myEditDist 2 2)
+    printTest (csoc, psoc) (1::Int8,3::Int8) (myEditDist 3 1)
+    printTest (csoc, psoc) (1::Int8,3::Int8) (myEditDist 1 3)
+    printTest (csoc, psoc) (1::Int8,3::Int8) (myEditDist 4 1)
 doArgs _ = usage
 
 main :: IO()

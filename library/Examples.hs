@@ -67,17 +67,6 @@ numCmps as bs = [(imp as bs)]
     imp _ _ = error "Bad args for imp"
 
            
-
-numCmpEff :: [Literal] -> [Literal] -> [Literal] 
-numCmpEff as bs = [imp (Constant False) (reverse as) (reverse bs)]
-    where
-    imp :: Literal -> [Literal] -> [Literal] -> Literal
-    imp reslt (n1:n1s) (n2:n2s) = imp (((O.bXor n1 n2) && n1) || reslt) n1s n2s
-    imp reslt [] [] = reslt
-    imp reslt [] n2s = (O.not (foldl1 (||) n2s)) && reslt
-    imp reslt n1s [] = (foldl1 (||) n1s) || reslt
-    imp _ _ _ = error "Bad args for imp"
-
 numEqs :: [Literal] -> [Literal] -> Literal
 numEqs n1 n2 = foldl1 (&&) (zipWith bij n1 n2)
 
@@ -156,8 +145,8 @@ columnCalc i j curColumn  (e1:es@(e2:es')) x (y:ys) =
             prev = last curColumn in
                   let tempMatch = addIntEff (logCeil (max i j)) e1 [addValue] 
                       firstCompare = cmpp prev e2 in
-                   let [secondCompare] = numCmpEff firstCompare tempMatch in
-                   let secondMatch = ifzip secondCompare tempMatch firstCompare in
+                   let [secondCompare] = numCmps firstCompare tempMatch in
+                   let secondMatch = ifList secondCompare tempMatch firstCompare in
                     let currentValue = (addIntEff (logCeil (max i j)) secondMatch [((O.not secondCompare) || (secondCompare && addValue))]) in
                       columnCalc i (j+1) (curColumn++[currentValue])  es x ys
 columnCalc _ _ curColumn _ _ _ = curColumn
@@ -294,7 +283,7 @@ edistance s t = d ! (ls , lt)
                                   writeArray m (i,j) $ foldl1 cmp [x+(O.num2Const 1), y+(O.num2Const 1), z+c ]
                 return m
 
-cmpp a b = let [reslt] = numCmpEff a b in
+cmpp a b = let [reslt] = numCmps a b in
            ifzip reslt b a
 cmp a b = O.if' (a O.<. b) a b
 for_ xs f =  mapM_ f xs
@@ -353,4 +342,72 @@ addIntEff p n1s n2s = let l1 = length n1s
     --imp p carry [] n2s = imp p carry n2s []
     
  
+myAdder :: Int -> [Literal] -> [Literal] -> [Literal]
+myAdder p (n1:n1s) (n2:n2s) = (O.bXor n1 n2): imp (p-1) (n1 && n2) n1s n2s
+       where
+          imp :: Int -> Literal -> [Literal] -> [Literal] -> [Literal]
+          imp p carry (n1:n1s) (n2:n2s) = (O.bXor (O.bXor n1 n2) carry): imp (p-1) (O.bXor (O.bXor (n1 && n2) (n1 && carry)) (n2 && carry)) n1s n2s 
+          imp 0 _ _ _ = []
+          imp p carry (n1:n1s) [] = (O.bXor n1 carry): imp (p-1) (n1 && carry) n1s []
+          imp p carry [] (n1:n1s) = (O.bXor n1 carry): imp (p-1) (n1 && carry) n1s []
+          imp p carry [] [] = [carry]
+
+
+myCmp :: [Literal] -> [Literal] -> Literal
+myCmp (n1:n1s) (n2:n2s) = imp ((O.bXor n1 n2) && n1) n1s n2s
+   where
+        imp :: Literal -> [Literal] -> [Literal] -> Literal
+        imp reslt (n1:n1s) (n2:n2s) = imp (ifThenElse (O.bXor n1 n2) n1 reslt) n1s n2s
+        imp reslt (n1:n1s) [] = imp (reslt || n1) n1s []
+        imp reslt [n1] [] = reslt || n1
+        imp reslt [] (n1:n1s) = imp (reslt && (O.not n1)) [] n1s 
+        imp reslt [] [n1] = reslt && (O.not n1) 
+        imp reslt [] [] = reslt
+                                 
+myIf :: Literal -> [Literal] -> [Literal] -> [Literal]
+myIf bool (n1:n1s) (n2:n2s) = let nbool = O.not bool in
+                                  imp bool nbool (n1:n1s) (n2:n2s)
+   where
+        imp :: Literal -> Literal -> [Literal] -> [Literal] -> [Literal]
+        imp bool nbool (n1:n1s) (n2:n2s) = ((n1 && bool) || (n2 && nbool)): (imp bool nbool n1s n2s)
+        imp bool nbool (n1:n1s) [] = (n1 && bool) : (imp bool nbool n1s [])
+        imp bool nbool [] (n1:n1s) = (n1 && nbool) : (imp bool nbool [] n1s)
+        imp bool nbool [] []       = []
+
+
+myInitDist :: Int -> [[Literal]]
+myInitDist a = [Constant False]: (imp 1 a [Constant False])
+    where
+    imp :: Int -> Int -> [Literal] -> [[Literal]]
+    imp p a currentNum = case (p > a) of
+            (False) -> let nextNum = myAdder (logCeil p) currentNum [Constant True] in
+                       nextNum : (imp (p+1) a nextNum)
+            (True) -> []
+
+myEditDist :: Int -> Int -> [Literal] -> [Literal] -> [Literal]
+myEditDist i j xs ys = let prevCol = myInitDist j in
+                           myEditDistEff 1 i j [Constant False] prevCol xs ys
+
+myEditDistEff :: Int -> Int -> Int ->[Literal] -> [[Literal]] -> [Literal] -> [Literal] -> [Literal] 
+myEditDistEff ic i j topValue es (x:xs) ys =
+              case (ic <= i) of
+                 (True)  ->  let prev = myAdder (logCeil i) topValue [Constant True] in
+                             let updatedColumn = myColumnCalc i j 1 [prev] prev  es x ys in
+                                 myEditDistEff (ic+1) i j prev  updatedColumn xs ys
+                 (False) ->  (last es)
+myEditDistEff _ _ _ _ es [] _ = (last es)
+
+myColumnCalc :: Int -> Int -> Int -> [[Literal]]  -> [Literal] -> [[Literal]] -> Literal -> [Literal] -> [[Literal]]
+myColumnCalc i j jc curColumn prev  (e1:es@(e2:es')) x (y:ys) =
+     case (jc <= j) of
+       (True) ->  let addValue = O.bXor x y in
+                      let tempMatch = myAdder (logCeil (max i j)) e1 [addValue] 
+                          firstCompare = myIf (myCmp prev e2) e2 prev in
+                          let secondCompare = myCmp firstCompare tempMatch in
+                          let secondMatch = myIf secondCompare tempMatch firstCompare in
+                          let currentValue = (myAdder (logCeil (max i j)) secondMatch [((O.not secondCompare) || (secondCompare && addValue))]) in
+                          myColumnCalc i j (jc+1) (curColumn++[currentValue]) currentValue  es x ys
+       (False) -> curColumn
+myColumnCalc _ _ _ curColumn _ _ _ _ = curColumn
+
 
