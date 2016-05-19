@@ -11,3 +11,4 @@ notGate (Input (soc, keys, a)) =
       case a' of
         Producer (a0, a1) -> return $ Producer (a1, a0)
         Consumer x -> return $ Consumer x
+        rec@Counter {notCount = n} -> return $ rec{notCount = n + 1}

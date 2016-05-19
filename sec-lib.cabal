@@ -29,6 +29,7 @@ library
         Gate
         BigGate
         NotGate
+        Counter
     build-depends:
         base ==4.8.*,
         entropy,
@@ -40,6 +41,7 @@ library
         vector,
         random,
         array,
+        parallel,
         split,
         async
     default-language: Haskell2010

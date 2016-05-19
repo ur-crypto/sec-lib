@@ -1,13 +1,14 @@
 {-# LANGUAGE BangPatterns #-}
 module BigGate where
+import           Control.Parallel.Strategies
 import           Data.Bits
-import qualified Data.ByteString           as BS
+import qualified Data.ByteString             as BS
 import           Data.List
-import qualified Network.Socket.ByteString as SBS
+import           Debug.Trace
+import qualified Network.Socket.ByteString   as SBS
 import           NotGate
 import           Types
 import           Utils
-import           Debug.Trace
 
 bigGate :: GateType -> SecureGate
 bigGate ty (Constant a) (Constant b) =
@@ -33,9 +34,15 @@ bigGate ty (Input (soc, fkeys, !a)) (Input (_,_,!b)) =
       case (a', b') of
         (Producer x, Producer y) -> doProducer x y
         (Consumer x, Consumer y) -> doConsumer x y
-        (Consumer _, Producer _) -> error "Should not combine types"
-        (Producer _, Consumer _) -> error "Should not combine types"
+        (x@Counter {}, y@Counter {}) -> doCount x y
+        _ -> error "Should not combine types"
       where
+        doCount p q =
+          let merge = Counter {andCount = andCount p + andCount q, orCount = orCount p + orCount q, xorCount = xorCount p + xorCount q, notCount = notCount p + notCount q} in
+          return $ case ty of
+            AND -> merge {andCount = andCount merge + 1}
+            OR -> merge {orCount = orCount merge + 1}
+            XOR -> merge {xorCount = xorCount merge + 1}
         doConsumer p q =
           case ty of
             XOR ->
@@ -63,7 +70,7 @@ bigGate ty (Input (soc, fkeys, !a)) (Input (_,_,!b)) =
                   enc fkey (k1, k2, o)
                 getInput fkey x y = do
                   tt <- getTT
-                  let !o = --trace(" We are processing gate"++(show tt)++"---"++(show x)++","++(show y)) 
+                  let !o = --trace(" We are processing gate"++(show tt)++"---"++(show x)++","++(show y))
                            decTruthTable fkey x y tt
                   return o
                   where
@@ -76,7 +83,7 @@ bigGate ty (Input (soc, fkeys, !a)) (Input (_,_,!b)) =
         doProducer p q = do
           case ty of
             XOR -> do
-              let (a0, a1) = p
+              let (a0, _) = p
                   (b0, b1) = q
               let o1 = BS.pack $ BS.zipWith xor a0 b0
                   o2 = BS.pack $ BS.zipWith xor a0 b1 in
@@ -128,4 +135,4 @@ bigGate ty (Input (soc, fkeys, !a)) (Input (_,_,!b)) =
                     -- putStrLn ""
                     SBS.sendMany soc list
                     where
-                      encTruthTable = map (enc fkey)
+                      encTruthTable = parMap rdeepseq (enc fkey)

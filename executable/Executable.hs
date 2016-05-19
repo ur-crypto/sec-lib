@@ -19,18 +19,16 @@ doArgs ("producer":_) = do
 doArgs ("consumer":_) = do
     res <- C.doWithoutSocket (test8, testb8) (editDist 2 2)
     print res
-doArgs ("both":_) = do
+doArgs ("both":a) = do
     hcsoc <- async C.getSocket
     hpsoc <- async P.getSocket
     csoc <- wait hcsoc
     psoc <- wait hpsoc
-    --printTest (csoc, psoc) (testmax, testmin) (hammingDistEff)
-    printTest (csoc, psoc) (1::Int8,3::Int8) (myEditDist 2 1)
-    printTest (csoc, psoc) (1::Int8,3::Int8) (myEditDist 1 2)
-    printTest (csoc, psoc) (1::Int8,3::Int8) (myEditDist 2 2)
-    printTest (csoc, psoc) (1::Int8,3::Int8) (myEditDist 3 1)
-    printTest (csoc, psoc) (1::Int8,3::Int8) (myEditDist 1 3)
-    printTest (csoc, psoc) (1::Int8,3::Int8) (myEditDist 4 1)
+    case a of
+      [] -> printTest (csoc, psoc) (1::Int8,3::Int8) (editDist 2 2)
+      [x] -> printTest (csoc, psoc) (1::Int8,3::Int8) (editDist (read x)  (read x))
+      x:y:_ -> printTest (csoc, psoc) (1::Int8,3::Int8) (editDist (read x) (read y))
+
 doArgs _ = usage
 
 main :: IO()

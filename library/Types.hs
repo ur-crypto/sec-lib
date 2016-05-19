@@ -26,6 +26,7 @@ type GenKey a = (Socket, [KeyContext], IO a)
 
 data KeyType = Consumer  Key
              | Producer (Key, Key)
+             | Counter {andCount :: !Int, orCount :: !Int, xorCount :: !Int, notCount :: !Int} deriving (Show)
 
 data KeyContext = AES FixedKey
                 | RAND Key
