@@ -29,6 +29,7 @@ library
         Gate
         BigGate
         NotGate
+        Counter
     build-depends:
         base ==4.8.*,
         entropy,

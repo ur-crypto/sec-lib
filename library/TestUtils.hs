@@ -2,11 +2,11 @@ module TestUtils where
 
 import qualified Consumer                 as C
 import           Control.Concurrent.Async
+import           Counter
 import           Data.Bits
 import           Network.Socket
 import qualified Producer                 as P
 import           Types
-
 doTest :: FiniteBits b => (Socket, Socket) -> (b, b) -> (SecureFunction) -> IO [Bool]
 doTest (csoc, psoc) (inputProduce, inputConsume) test = do
     conOutHandle <- asyncBound $ C.doWithSocket csoc (inputProduce, inputConsume) test
@@ -27,6 +27,8 @@ printTest :: FiniteBits b => (Socket, Socket) -> (b, b) -> (SecureFunction) -> I
 printTest (csoc, psoc) (a, b) test = do
     putStrLn "Starting Test"
 --    countGates (finiteBitSize a) test -- doesnt work?
+    numGates <- countGates csoc (a, b) test
+    print numGates
     conOutHandle <- asyncBound $ C.doWithSocket csoc (a, b) test
     proOutHandle <- asyncBound $ P.doWithSocket psoc (a, b) test
     conOut <- wait conOutHandle
