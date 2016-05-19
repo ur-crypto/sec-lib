@@ -350,7 +350,6 @@ addIntEff p n1s n2s = let l1 = length n1s
     --imp p carry (n1:n1s) [] = (imp (p-1) (n1 && carry) n1s []) ++ [(O.bXor n1 carry)]
     --imp p carry [] n2s = imp p carry n2s []
 
-
 myAdder :: Int -> [Literal] -> [Literal] -> [Literal]
 myAdder p (n1:n1s) (n2:n2s) = (O.bXor n1 n2): imp (p-1) (n1 && n2) n1s n2s
        where
@@ -378,7 +377,7 @@ myIf bool (n1:n1s) (n2:n2s) = let nbool = O.not bool in
                                   imp bool nbool (n1:n1s) (n2:n2s)
    where
         imp :: Literal -> Literal -> [Literal] -> [Literal] -> [Literal]
-        imp bool nbool (n1:n1s) (n2:n2s) = ((n1 && bool) || (n2 && nbool)): (imp bool nbool n1s n2s)
+        imp bool nbool (n1:n1s) (n2:n2s) = (O.bXor (n1 && bool) (n2 && nbool)): (imp bool nbool n1s n2s)
         imp bool nbool (n1:n1s) [] = (n1 && bool) : (imp bool nbool n1s [])
         imp bool nbool [] (n1:n1s) = (n1 && nbool) : (imp bool nbool [] n1s)
         imp bool nbool [] []       = []
@@ -414,7 +413,76 @@ myColumnCalc i j jc curColumn prev  (e1:es@(e2:es')) x (y:ys) =
                           firstCompare = myIf (myCmp prev e2) e2 prev in
                           let secondCompare = myCmp firstCompare tempMatch in
                           let secondMatch = myIf secondCompare tempMatch firstCompare in
-                          let currentValue = (myAdder (logCeil (max i j)) secondMatch [((O.not secondCompare) || (secondCompare && addValue))]) in
+                          let currentValue = (myAdder (logCeil (max i j)) secondMatch [(O.bXor (O.not secondCompare) (secondCompare && addValue))]) in
                           myColumnCalc i j (jc+1) (curColumn++[currentValue]) currentValue  es x ys
        (False) -> curColumn
 myColumnCalc _ _ _ curColumn _ _ _ _ = curColumn
+
+omyAdder :: Int -> Int -> [Literal] -> [Literal] -> (Int,[Literal])
+omyAdder g p (n1:n1s) (n2:n2s) = let (g1,reslt) = imp g (p-1) (n1 && n2) n1s n2s in (g1,(O.bXor n1 n2): reslt)
+       where
+          imp :: Int -> Int -> Literal -> [Literal] -> [Literal] -> (Int,[Literal])
+          imp g p carry (n1:n1s) (n2:n2s) = let (g1,reslt) = imp (g+3) (p-1) (O.bXor (O.bXor (n1 && n2) (n1 && carry)) (n2 && carry)) n1s n2s in (g1,(O.bXor (O.bXor n1 n2) carry): reslt)
+          imp g 0 _ _ _ = (g,[])
+          imp g p carry (n1:n1s) [] = let (g1,reslt) = imp (g+1) (p-1) (n1 && carry) n1s [] in (g1,(O.bXor n1 carry): reslt)
+          imp g p carry [] (n1:n1s) = let (g1,reslt) = imp (g+1) (p-1) (n1 && carry) n1s [] in (g1,(O.bXor n1 carry): reslt)
+          imp g p carry [] [] = (g,[carry])
+
+
+omyCmp :: Int -> [Literal] -> [Literal] -> (Int,Literal)
+omyCmp g (n1:n1s) (n2:n2s) = imp (g+1) ((O.bXor n1 n2) && n1) n1s n2s
+   where
+        imp :: Int -> Literal -> [Literal] -> [Literal] -> (Int,Literal)
+        imp g reslt (n1:n1s) (n2:n2s) = imp g (ifThenElse (O.bXor n1 n2) n1 reslt) n1s n2s
+        imp g reslt (n1:n1s) [] = imp (g+1) (reslt || n1) n1s []
+        imp g reslt [n1] [] = (g,reslt || n1)
+        imp g reslt [] (n1:n1s) = imp (g+1) (reslt && (O.not n1)) [] n1s
+        imp g reslt [] [n1] = (g+1,reslt && (O.not n1))
+        imp g reslt [] [] = (g,reslt)
+
+omyIf :: Int -> Literal -> [Literal] -> [Literal] -> (Int,[Literal])
+omyIf g bool (n1:n1s) (n2:n2s) = let nbool = O.not bool in
+                                  imp g bool nbool (n1:n1s) (n2:n2s)
+   where
+        imp :: Int -> Literal -> Literal -> [Literal] -> [Literal] -> (Int,[Literal])
+        imp g bool nbool (n1:n1s) (n2:n2s) = let (g1,reslt) = (imp (g+2) bool nbool n1s n2s) in (g1,(O.bXor (n1 && bool)  (n2 && nbool)): reslt)
+        imp g bool nbool (n1:n1s) [] = let (g1,reslt) = (imp (g+1) bool nbool n1s []) in (g1,(n1 && bool) : reslt)
+        imp g bool nbool [] (n1:n1s) = let (g1,reslt) = (imp (g+1) bool nbool [] n1s) in (g1,(n1 && nbool) : reslt)
+        imp g bool nbool [] []       = (g,[])
+
+
+omyInitDist :: Int -> [[Literal]]
+omyInitDist a = [Constant False]: (imp 1 a [Constant False])
+    where
+    imp :: Int -> Int -> [Literal] -> [[Literal]]
+    imp p a currentNum = case (p > a) of
+            (False) -> let (_,nextNum) = omyAdder 0 (logCeil p) currentNum [Constant True] in
+                       nextNum : (imp (p+1) a nextNum)
+            (True) -> []
+
+omyEditDist :: Int -> Int -> [Literal] -> [Literal] -> [Literal]
+omyEditDist i j xs ys = let prevCol = omyInitDist j in
+                           let (_,reslt) = omyEditDistEff 0 1 i j [Constant False] prevCol xs ys in
+                                 reslt
+omyEditDistEff :: Int -> Int -> Int -> Int ->[Literal] -> [[Literal]] -> [Literal] -> [Literal] -> (Int,[Literal])
+omyEditDistEff g ic i j topValue es (x:xs) ys =
+              case (ic <= i) of
+                 (True)  ->  let (_,prev) = omyAdder 0  (logCeil i) topValue [Constant True] in
+                             let (g2,updatedColumn) = omyColumnCalc g i j 1 [prev] prev  es x ys in
+                                 omyEditDistEff g2 (ic+1) i j prev  updatedColumn xs ys
+                 (False) ->  trace ("Aha! Now I now the number of AND gates is "++(show g)) (g,(last es))
+omyEditDistEff g _ _ _ _ es [] _ = (g,(last es))
+
+omyColumnCalc :: Int -> Int -> Int -> Int -> [[Literal]]  -> [Literal] -> [[Literal]] -> Literal -> [Literal] -> (Int,[[Literal]])
+omyColumnCalc g i j jc curColumn prev  (e1:es@(e2:es')) x (y:ys) =
+     case (jc <= j) of
+       (True) ->  let addValue = O.bXor x y in
+                      let (g1,tempMatch) = omyAdder g  (logCeil (max i j)) e1 [addValue]
+                          (g2,firstCompare) = let (gg,reslt) = omyCmp g1 prev e2 in omyIf gg reslt e2 prev in
+                          let (g3, secondCompare) = omyCmp g2 firstCompare tempMatch in
+                          let (g4, secondMatch) = omyIf g3 secondCompare tempMatch firstCompare in
+                          let (g5, currentValue) = (omyAdder (g4+1) (logCeil (max i j)) secondMatch [(O.bXor (O.not secondCompare) (secondCompare && addValue))]) in
+                          omyColumnCalc g5 i j (jc+1) (curColumn++[currentValue]) currentValue  es x ys
+       (False) -> (g,curColumn)
+omyColumnCalc g _ _ _ curColumn _ _ _ _ = (g,curColumn)
+

@@ -50,7 +50,7 @@ not = notGate
 ifThenElse :: Literal -> Literal -> Literal -> Literal
 ifThenElse bool tb fb =
     let nbool = not bool in
-    ((bool && tb) || (nbool && fb))
+    (bXor (bool && tb) (nbool && fb))
 
 if' :: SecureNum -> SecureNum -> SecureNum -> SecureNum
 if' bools= zipWith (ifThenElse (foldl1 (||) bools))
