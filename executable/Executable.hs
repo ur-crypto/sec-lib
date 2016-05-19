@@ -14,10 +14,10 @@ usage = putStrLn "Enter producer or consumer"
 
 doArgs :: [String] -> IO()
 doArgs ("producer":_) = do
-    res <- P.doWithoutSocket (test8, testb8) (editDist 2 2)
+    res <- P.doWithoutSocket (test8, testb8) (myEditDist 4 1)
     print res
 doArgs ("consumer":_) = do
-    res <- C.doWithoutSocket (test8, testb8) (editDist 2 2)
+    res <- C.doWithoutSocket (test8, testb8) (myEditDist 4 1)
     print res
 doArgs ("both":a) = do
     hcsoc <- async C.getSocket
@@ -25,9 +25,9 @@ doArgs ("both":a) = do
     csoc <- wait hcsoc
     psoc <- wait hpsoc
     case a of
-      [] -> printTest (csoc, psoc) (1::Int8,3::Int8) (editDist 2 2)
-      [x] -> printTest (csoc, psoc) (1::Int8,3::Int8) (editDist (read x)  (read x))
-      x:y:_ -> printTest (csoc, psoc) (1::Int8,3::Int8) (editDist (read x) (read y))
+      [] -> printTest (csoc, psoc) (1::Int8,3::Int8) (omyEditDist 2 2)
+      [x] -> printTest (csoc, psoc) (1::Int8,3::Int8) (omyEditDist (read x)  (read x))
+      x:y:_ -> printTest (csoc, psoc) (1::Int8,3::Int8) (omyEditDist (read x) (read y))
 
 doArgs _ = usage
 
