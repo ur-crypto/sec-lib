@@ -25,8 +25,7 @@ doTest (csoc, psoc) (inputProduce, inputConsume) test = do
 
 printTest :: FiniteBits b => (Socket, Socket) -> (b, b) -> (SecureFunction) -> IO ()
 printTest (csoc, psoc) (a, b) test = do
-    putStrLn "Starting Test"
---    countGates (finiteBitSize a) test -- doesnt work?
+    -- putStrLn "Starting Test"
     numGates <- countGates csoc (a, b) test
     print numGates
     conOutHandle <- asyncBound $ C.doWithSocket csoc (a, b) test

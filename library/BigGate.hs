@@ -75,7 +75,7 @@ bigGate ty (Input (soc, fkeys, !a)) (Input (_,_,!b)) =
                   return o
                   where
                       getTT = do
-                          byteTT <- trace( " I am here now. ")SBS.recv soc (4 * cipherSize)
+                          byteTT <- SBS.recv soc (4 * cipherSize)
                           let (x1, r1) = BS.splitAt cipherSize byteTT
                           let (x2, r2) = BS.splitAt cipherSize r1
                           let (x3, x4) = BS.splitAt cipherSize r2
