@@ -49,7 +49,7 @@ doWithSocket soc (produceInput, consumeInput) test = do
     -- putStrLn "Key List:"
     -- mapM_ (printKey (Just False)) keyList
     -- putStrLn ""
-    let wrapVal k= Input (soc, [AES fkey], return (Consumer k))
+    let wrapVal k= Input soc [AES fkey] (return (Consumer k))
     let (theirList, ourList) = splitAt (finiteBitSize produceInput) $ map wrapVal keyList
     receiveOutputs $ test theirList ourList
     where
@@ -59,7 +59,7 @@ doWithSocket soc (produceInput, consumeInput) test = do
       receiveOutputs = mapM receiveNodes
           where
           receiveNodes :: Literal -> IO Bool
-          receiveNodes (Input (_, _, k')) = do
+          receiveNodes Input {value = k'} = do
               (Consumer k) <- k'
               o0 <- SBS.recv soc cipherSize
               o1 <- SBS.recv soc cipherSize

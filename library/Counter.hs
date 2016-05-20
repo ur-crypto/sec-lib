@@ -8,10 +8,10 @@ countGates :: FiniteBits a => Socket -> (a, a) -> SecureFunction -> IO KeyType
 countGates ignored (con, pro) func = do
   let pn = [1..finiteBitSize pro]
       cn = [1..finiteBitSize con]
-      pcounts = map (const $ Input (ignored, [], return $ Counter 0 0 0 0)) pn
-      qcounts = map (const $ Input (ignored, [], return $ Counter 0 0 0 0)) cn
+      pcounts = map (const $ Input ignored [] (return $ Counter 0 0 0 0)) pn
+      qcounts = map (const $ Input ignored [] (return $ Counter 0 0 0 0)) cn
       results = func pcounts qcounts
-      extract (Input (_, _, a)) = a
+      extract Input {value = a} = a
       extract (Constant _) = return $ Counter 0 0 0 0
       ioCounts = map extract results
   counts <- sequence ioCounts

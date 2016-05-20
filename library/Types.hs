@@ -16,7 +16,7 @@ type CTT = TruthTable Key
 type PTT = TruthTable (Key, Key, Key)
 type TruthTable a = [a,a,a,a]
 data Literal = Constant Bool
-               | Input (GenKey KeyType)
+              | Input {soc :: Socket, keys ::  [KeyContext], value :: IO KeyType}
 type SecureGate = Literal -> Literal -> Literal
 type SecureNum = [Literal]
 type SecureFunction = SecureNum -> SecureNum -> SecureNum
@@ -37,4 +37,4 @@ instance Show KeyType where
 data KeyContext = AES FixedKey
                 | RAND Key
 
-data GateType = AND | OR | XOR
+data GateType = AND | OR | XOR deriving (Show)

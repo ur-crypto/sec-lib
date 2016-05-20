@@ -1,4 +1,5 @@
-{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE BangPatterns   #-}
+{-# LANGUAGE NamedFieldPuns #-}
 module BigGate where
 import           Control.Monad
 import           Control.Parallel.Strategies
@@ -17,8 +18,8 @@ bigGate ty (Constant a) (Constant b) =
     AND -> a && b
     OR -> a || b
     XOR -> if a then not b else b
-bigGate ty (Constant b) (Input a) = bigGate ty (Input a) (Constant b)
-bigGate ty (Input a) (Constant b) = partialConstant ty (Input a) b
+bigGate ty b@(Constant _) a@Input {} = bigGate ty a b
+bigGate ty (a@Input {}) (Constant b) = partialConstant ty a b
   where
     partialConstant AND _ False = Constant False
     partialConstant AND key True = key
@@ -26,8 +27,8 @@ bigGate ty (Input a) (Constant b) = partialConstant ty (Input a) b
     partialConstant OR _ True = Constant True
     partialConstant XOR key False = key
     partialConstant XOR key True = notGate key
-bigGate ty (Input (soc, fkeys, !a)) (Input (_,_,!b)) =
-  Input (soc, fkeys, val)
+bigGate ty Input {soc, keys = fkeys, value = a} Input { value = b} =
+  Input soc fkeys val
   where
     val = do
       !a' <- a
@@ -38,7 +39,7 @@ bigGate ty (Input (soc, fkeys, !a)) (Input (_,_,!b)) =
           --   print a'
           --   print b'
           --   putStrLn ""
-          doProducer (x0, x1) (y0, y1)
+          traceStack (show ty ++ "\n" ++ show a' ++ "\n" ++ show b') $ doProducer (x0, x1) (y0, y1)
         (Consumer x, Consumer y) -> do
           -- when (a' == b') $ do
           --   print a'
