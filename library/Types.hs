@@ -27,7 +27,7 @@ type FixedKey = AES128
 
 type GenKey a = (Socket, [KeyContext], IO a)
 
-type GateMemo = (KeyType, KeyType) -> Map (KeyType, KeyType) KeyType -> MemoT (KeyType, KeyType) KeyType IO KeyType
+type GateMemo = (KeyType, KeyType) -> IO KeyType
 
 data KeyType = Consumer !Key
              | Producer !Key !Key

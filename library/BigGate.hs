@@ -39,30 +39,21 @@ bigGate ty Input {soc, keys = fkeys, value = a} Input { value = b} =
       let (_, pCache) = a'
           (_, qCache) = b'
           mCache = M.union pCache qCache
-      case (a', b') of
-        ((p@(Producer _ _), _), (q@(Producer _ _), _)) ->
-          -- when (a' == b') $ do
-          --   print a'
-          --   print b'
-          --   putStrLn ""
-          -- traceStack (show ty ++ "\n" ++ show a' ++ "\n" ++ show b') $ doProducer (x0, x1) (y0, y1)
-          memo doProducer (p, q) (M.union pCache qCache)
-        ((p@(Consumer _), _), (q@(Consumer _),_)) ->
-          -- when (a' == b') $ do
-          --   print a'
-          --   print b'
-          --   putStrLn ""
-          memo doConsumer (p, q) (M.union pCache qCache)
-        ((x@Counter {},_), (y@Counter {},_)) -> doCount x y
-        _ -> error "Should not combine types"
+          res = case (a', b') of
+              ((p@(Producer _ _), _), (q@(Producer _ _), _)) -> memo doProducer (p, q)
+              ((p@(Consumer _), _), (q@(Consumer _),_)) -> memo doConsumer (p, q)
+              ((x@Counter {},_), (y@Counter {},_)) -> memo doCount (x, y)
+              _ -> error "Should not combine types"
+      runMemoT res mCache
       where
-        doCount p q =
+        doCount (p, q) =
           let merge = Counter {andCount = andCount p + andCount q, orCount = orCount p + orCount q, xorCount = xorCount p + xorCount q, notCount = notCount p + notCount q} in
           return $ case ty of
             AND -> merge {andCount = andCount merge + 1}
             OR -> merge {orCount = orCount merge + 1}
             XOR -> merge {xorCount = xorCount merge + 1}
-        doConsumer p q =
+        -- doConsumer :: GateMemo
+        doConsumer (Consumer p, Consumer q) =
           case ty of
             XOR ->
               return $! Consumer (BS.pack $ BS.zipWith xor p q)
@@ -100,8 +91,8 @@ bigGate ty Input {soc, keys = fkeys, value = a} Input { value = b} =
                           let (x3, x4) = BS.splitAt cipherSize r2
                           return [x1, x2, x3, x4]
 
-        doProducer :: GateMemo
-        doProducer (p, q) cache =
+        -- doProducer :: GateMemo
+        doProducer (p, q) =
           case ty of
             XOR -> do
               let Producer a0 _ = p
