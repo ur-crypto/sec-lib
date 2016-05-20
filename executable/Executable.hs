@@ -27,10 +27,11 @@ doArgs ("both":a) = do
     hpsoc <- async P.getSocket
     csoc <- wait hcsoc
     psoc <- wait hpsoc
+    let test = jbDist
     case a of
-      [] -> printTest (csoc, psoc) (1::Int8,3::Int8) (jbDist 2 2)
-      [x] -> printTest (csoc, psoc) (1::Int8,3::Int8) (jbDist (read x)  (read x))
-      x:y:_ -> printTest (csoc, psoc) (1::Int8,3::Int8) (jbDist (read x) (read y))
+      [] -> printTest (csoc, psoc) (1::Int8,3::Int8) (test 2 2)
+      [x] -> printTest (csoc, psoc) (1::Int8,3::Int8) (test (read x)  (read x))
+      x:y:_ -> printTest (csoc, psoc) (1::Int8,3::Int8) (test (read x) (read y))
 
 doArgs _ = usage
 
