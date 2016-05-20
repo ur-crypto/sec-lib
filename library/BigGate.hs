@@ -32,7 +32,7 @@ bigGate ty (Input (soc, fkeys, !a)) (Input (_,_,!b)) =
     val = do
       !a' <- a
       !b' <- b
-      traceStack "Processing Gate" $ case (a', b') of
+      case (a', b') of
         (Producer x0 x1, Producer y0 y1) -> do
           -- when (a' == b') $ do
           --   print a'
