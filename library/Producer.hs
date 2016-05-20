@@ -49,7 +49,7 @@ doWithSocket soc (inputProduce, inputConsume) test =  do
     -- putStrLn "Key List:"
     sendList soc keyList bothList
     -- putStrLn ""
-    let wrap key = Input (soc, [AES fkey, RAND rkey], return $ Producer key)
+    let wrap (k0, k1) = Input (soc, [AES fkey, RAND rkey], return $ Producer k0 k1)
     let (ourWrappedList, theirWrappedList) = (map wrap ourList, map wrap theirList)
     let !res = test ourWrappedList theirWrappedList
     sendOutputs res
@@ -61,7 +61,7 @@ doWithSocket soc (inputProduce, inputConsume) test =  do
         sendNodes :: Literal -> IO Bool
         sendNodes (Input k) = do
             let (_, _, k') = k
-            (Producer (k0, k1)) <- k'
+            (Producer k0 k1) <- k'
             SBS.sendAll soc k0
             SBS.sendAll soc k1
             ans <- SBS.recv soc cipherSize

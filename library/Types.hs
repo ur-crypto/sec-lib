@@ -9,6 +9,7 @@ module Types where
 import           Crypto.Cipher.AES
 import           Data.ByteString   as BS
 import           Network.Socket
+import           Text.Bytedump
 
 type Key = BS.ByteString
 type CTT = TruthTable Key
@@ -24,9 +25,14 @@ type FixedKey = AES128
 
 type GenKey a = (Socket, [KeyContext], IO a)
 
-data KeyType = Consumer  Key
-             | Producer (Key, Key)
-             | Counter {andCount :: !Int, orCount :: !Int, xorCount :: !Int, notCount :: !Int} deriving (Show)
+data KeyType = Consumer !Key
+             | Producer !Key !Key
+             | Counter {andCount :: !Int, orCount :: !Int, xorCount :: !Int, notCount :: !Int} deriving (Eq)
+
+instance Show KeyType where
+  show (Consumer a) = dumpBS a
+  show (Producer a b) = dumpBS a ++ "\n" ++ dumpBS b
+  show (Counter a o x n) = "AND: " ++ show a ++ "\tOR: " ++ show o ++ "\tXOR: " ++ show x ++ "\tNOT: " ++  show n
 
 data KeyContext = AES FixedKey
                 | RAND Key
