@@ -8,8 +8,8 @@ notGate Input {soc, keys, value} =
   Input soc keys changed
   where
     changed = do
-      a' <- value
+      (a', mCache) <- value
       case a' of
-        Producer a0 a1 -> return $ Producer a1 a0
-        Consumer x -> return $ Consumer x
-        rec@Counter {notCount = n} -> return $ rec{notCount = n + 1}
+        Producer a0 a1 -> return (Producer a1 a0, mCache)
+        Consumer x -> return (Consumer x, mCache)
+        rec@Counter {notCount = n} -> return (rec{notCount = n + 1}, mCache)

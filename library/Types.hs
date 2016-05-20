@@ -6,8 +6,10 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 
 module Types where
+import           Control.Monad.Memo
 import           Crypto.Cipher.AES
-import           Data.ByteString   as BS
+import           Data.ByteString    as BS
+import           Data.Map
 import           Network.Socket
 import           Text.Bytedump
 
@@ -16,7 +18,7 @@ type CTT = TruthTable Key
 type PTT = TruthTable (Key, Key, Key)
 type TruthTable a = [a,a,a,a]
 data Literal = Constant Bool
-              | Input {soc :: Socket, keys ::  [KeyContext], value :: IO KeyType}
+              | Input {soc :: Socket, keys ::  [KeyContext], value :: IO (KeyType, Map (KeyType, KeyType) KeyType) }
 type SecureGate = Literal -> Literal -> Literal
 type SecureNum = [Literal]
 type SecureFunction = SecureNum -> SecureNum -> SecureNum
@@ -25,9 +27,11 @@ type FixedKey = AES128
 
 type GenKey a = (Socket, [KeyContext], IO a)
 
+type GateMemo = (KeyType, KeyType) -> Map (KeyType, KeyType) KeyType -> MemoT (KeyType, KeyType) KeyType IO KeyType
+
 data KeyType = Consumer !Key
              | Producer !Key !Key
-             | Counter {andCount :: !Int, orCount :: !Int, xorCount :: !Int, notCount :: !Int} deriving (Eq)
+             | Counter {andCount :: !Int, orCount :: !Int, xorCount :: !Int, notCount :: !Int} deriving (Eq, Ord)
 
 instance Show KeyType where
   show (Consumer a) = dumpBS a

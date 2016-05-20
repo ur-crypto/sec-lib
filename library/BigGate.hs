@@ -1,11 +1,14 @@
-{-# LANGUAGE BangPatterns   #-}
-{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE BangPatterns     #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE NamedFieldPuns   #-}
 module BigGate where
 import           Control.Monad
+import           Control.Monad.Memo
 import           Control.Parallel.Strategies
 import           Data.Bits
 import qualified Data.ByteString             as BS
 import           Data.List
+import qualified Data.Map                    as M
 import           Debug.Trace
 import qualified Network.Socket.ByteString   as SBS
 import           NotGate
@@ -33,20 +36,24 @@ bigGate ty Input {soc, keys = fkeys, value = a} Input { value = b} =
     val = do
       !a' <- a
       !b' <- b
+      let (_, pCache) = a'
+          (_, qCache) = b'
+          mCache = M.union pCache qCache
       case (a', b') of
-        (Producer x0 x1, Producer y0 y1) -> do
+        ((p@(Producer _ _), _), (q@(Producer _ _), _)) ->
           -- when (a' == b') $ do
           --   print a'
           --   print b'
           --   putStrLn ""
-          traceStack (show ty ++ "\n" ++ show a' ++ "\n" ++ show b') $ doProducer (x0, x1) (y0, y1)
-        (Consumer x, Consumer y) -> do
+          -- traceStack (show ty ++ "\n" ++ show a' ++ "\n" ++ show b') $ doProducer (x0, x1) (y0, y1)
+          memo doProducer (p, q) (M.union pCache qCache)
+        ((p@(Consumer _), _), (q@(Consumer _),_)) ->
           -- when (a' == b') $ do
           --   print a'
           --   print b'
           --   putStrLn ""
-          doConsumer x y
-        (x@Counter {}, y@Counter {}) -> doCount x y
+          memo doConsumer (p, q) (M.union pCache qCache)
+        ((x@Counter {},_), (y@Counter {},_)) -> doCount x y
         _ -> error "Should not combine types"
       where
         doCount p q =
@@ -84,7 +91,7 @@ bigGate ty Input {soc, keys = fkeys, value = a} Input { value = b} =
                   tt <- getTT
                   let !o = --trace(" We are processing gate"++(show tt)++"---"++(show x)++","++(show y))
                            decTruthTable fkey x y tt
-                  return o
+                  return $! o
                   where
                       getTT = do
                           byteTT <- SBS.recv soc (4 * cipherSize)
@@ -92,11 +99,13 @@ bigGate ty Input {soc, keys = fkeys, value = a} Input { value = b} =
                           let (x2, r2) = BS.splitAt cipherSize r1
                           let (x3, x4) = BS.splitAt cipherSize r2
                           return [x1, x2, x3, x4]
-        doProducer p q =
+
+        doProducer :: GateMemo
+        doProducer (p, q) cache =
           case ty of
             XOR -> do
-              let (a0, _) = p
-                  (b0, b1) = q
+              let Producer a0 _ = p
+                  Producer b0 b1 = q
               let o1 = BS.pack $ BS.zipWith xor a0 b0
                   o2 = BS.pack $ BS.zipWith xor a0 b1 in
                   return $! Producer o1 o2
@@ -124,7 +133,7 @@ bigGate ty Input {soc, keys = fkeys, value = a} Input { value = b} =
                   getTT AND (o0, o1) = helper o0 o0 o0 o1
                   getTT OR (o0, o1) = helper o0 o1 o1 o1
                   getTT XOR (o0, o1) = helper o0 o1 o1 o0
-                  helper o1 o2 o3 o4 (a0, a1) (b0, b1)=
+                  helper o1 o2 o3 o4 (Producer a0 a1) (Producer b0 b1)=
                     [(a0, b0, o1), (a0, b1, o2), (a1, b0, o3), (a1, b1, o4)]
                   order (z1, z2, _) (z3, z4, _) =
                     let p' = testBit (BS.last z1) 0
