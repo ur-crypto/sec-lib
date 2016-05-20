@@ -39,7 +39,7 @@ bigGate ty Input {soc, keys = fkeys, value = a} Input { value = b} =
           --   print a'
           --   print b'
           --   putStrLn ""
-          doProducer (x0, x1) (y0, y1)
+          traceStack (show ty ++ "\n" ++ show a' ++ "\n" ++ show b') $ doProducer (x0, x1) (y0, y1)
         (Consumer x, Consumer y) -> do
           -- when (a' == b') $ do
           --   print a'
