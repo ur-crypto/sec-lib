@@ -4,6 +4,7 @@ import           Data.Array
 import           Data.Array.ST
 import           Data.Bits
 import           Data.Int
+import           Data.List
 import           Data.List.Split
 import           Debug.Trace
 import           Ops              as O
@@ -258,64 +259,71 @@ boolsEditDistance sa sb = last $ foldl transform [0..length sa] sb
             where
                 compute z (c', x, y) = minimum [y+1, z+1, x + fromEnum (c' /= c)]
 
+
+jbDist :: Int -> Int -> SecureFunction
+jbDist i j sa sb =
+  let ssa = take i sa
+      ssb = take i sb in
+      levenshtein2 ssa ssb
+
 levenshtein2 :: SecureFunction
-levenshtein2 sa sb = last $ foldl transform (map O.num2Const [0..length sa]) sb
+levenshtein2 sa sb = last $ foldl' transform (map O.num2Const [0..fromIntegral (length sa) :: Int8] ) sb
     where
-        transform xs@(x:xs') c = scanl compute (x+(O.num2Const 1)) (zip3 sa xs xs')
+        transform xs@(x:xs') c = scanl' compute (x+(O.num2Const (1 :: Int8))) (zip3 sa xs xs')
             where
-                compute z (c', x, y) = foldl1 cmp [y+(O.num2Const 1), z+(O.num2Const 1), x + (extendBy 7 $ [O.bXor c' c])]
+                compute z (c', x, y) = foldl1' cmp [y+(O.num2Const (1 :: Int8)), z+(O.num2Const (1 :: Int8)), x + [O.bXor c' c]]
                     where
-                        cmp a b = O.if' (a O.<. b) a b
+                        cmp a b = a .&. b
 
 
---edistance :: Eq a => [a] -> [a] -> Int
-edistance :: SecureFunction
-edistance s t = d ! (ls , lt)
-    where s' = array (0,ls) [ (i,x) | (i,x) <- zip [0..] s ]
-          t' = array (0,lt) [ (i,x) | (i,x) <- zip [0..] t ]
-          --ls = 4
-          --lt = 4
-          ls = length s
-          lt = length t
-          (l,h) = ((0,0),(length s,length t))
-          d = runSTArray $ do
-                m <- newArray (l,h) 0
-                for_ [0..ls] $ \i -> writeArray m (i,0) (ourBool (bits2Bools (fromIntegral (i :: Int) :: Int8)))
-                for_ [0..lt] $ \j -> writeArray m (0,j) (ourBool (bits2Bools (fromIntegral (j :: Int) :: Int8)))
-                for_ [1..lt] $ \j -> do
-                              for_ [1..ls] $ \i -> do
-                                  let c = if' (extendBy 1 $ [O.bXor (s'!(i-1)) (t'! (j-1))])
-                                           (O.num2Const 1)  (O.num2Const 0)
-                                  x <- readArray m (i-1,j)
-                                  y <- readArray m (i,j-1)
-                                  z <- readArray m (i-1,j-1)
-                                  writeArray m (i,j) $ foldl1 cmp [x+(O.num2Const 1), y+(O.num2Const 1), z+c ]
-                return m
+-- --edistance :: Eq a => [a] -> [a] -> Int
+-- edistance :: SecureFunction
+-- edistance s t = d ! (ls , lt)
+--     where s' = array (0,ls) [ (i,x) | (i,x) <- zip [0..] s ]
+--           t' = array (0,lt) [ (i,x) | (i,x) <- zip [0..] t ]
+--           --ls = 4
+--           --lt = 4
+--           ls = length s
+--           lt = length t
+--           (l,h) = ((0,0),(length s,length t))
+--           d = runSTArray $ do
+--                 m <- newArray (l,h) 0
+--                 for_ [0..ls] $ \i -> writeArray m (i,0) (ourBool (bits2Bools (fromIntegral (i :: Int) :: Int8)))
+--                 for_ [0..lt] $ \j -> writeArray m (0,j) (ourBool (bits2Bools (fromIntegral (j :: Int) :: Int8)))
+--                 for_ [1..lt] $ \j -> do
+--                               for_ [1..ls] $ \i -> do
+--                                   let c = if' (extendBy 1 $ [O.bXor (s'!(i-1)) (t'! (j-1))])
+--                                            (O.num2Const 1)  (O.num2Const 0)
+--                                   x <- readArray m (i-1,j)
+--                                   y <- readArray m (i,j-1)
+--                                   z <- readArray m (i-1,j-1)
+--                                   writeArray m (i,j) $ foldl1 cmp [x+(O.num2Const 1), y+(O.num2Const 1), z+c ]
+--                 return m
 
 cmpp a b = let [reslt] = numCmps a b in
            ifzip reslt b a
 cmp a b = O.if' (a O.<. b) a b
 for_ xs f =  mapM_ f xs
 
-edisteff xs ys = let xss = (take 2 xs)
-                     yss = (take 2 ys) in
-                     edist xss yss
+-- edisteff xs ys = let xss = (take 2 xs)
+--                      yss = (take 2 ys) in
+--                      edist xss yss
 
-edist :: SecureFunction
-edist s1 s2 = iter s1 s2 ls2 where
-               (_,ls2) = (initDist (length s2))
-               iter (c:cs) s2 row@(e:es) =
-                       iter cs s2 (e' : rest e' c s2 row) where
-                               e' = e + (O.num2Const 1)
-               iter [] _ row = last row
-               iter _ _ _ = error "iter (distance): unexpected arguments"
-               rest e c (c2:c2s) (e1:es@(e2:es')) =
-                       seq k (k : rest k c c2s es) where
-                               k = (cmpp (e1 + (if' [(O.bXor c c2)] (O.num2Const 0) (O.num2Const 1))) $
-                                       cmpp (e+(O.num2Const 1)) (e2+(O.num2Const 1)))
-               rest _ _ [] _ = []
-               rest _ _ _ _ = error "rest (distance): unexpected arguments"
-
+-- edist :: SecureFunction
+-- edist s1 s2 = iter s1 s2 ls2 where
+--                (_,ls2) = (initDist (length s2))
+--                iter (c:cs) s2 row@(e:es) =
+--                        iter cs s2 (e' : rest e' c s2 row) where
+--                                e' = e + (O.num2Const 1)
+--                iter [] _ row = last row
+--                iter _ _ _ = error "iter (distance): unexpected arguments"
+--                rest e c (c2:c2s) (e1:es@(e2:es')) =
+--                        seq k (k : rest k c c2s es) where
+--                                k = (cmpp (e1 + (if' [(O.bXor c c2)] (O.num2Const 0) (O.num2Const 1))) $
+--                                        cmpp (e+(O.num2Const 1)) (e2+(O.num2Const 1)))
+--                rest _ _ [] _ = []
+--                rest _ _ _ _ = error "rest (distance): unexpected arguments"
+--
 
 initDist :: Int -> ([Literal],[[Literal]])
 initDist a = case (a>0) of
@@ -485,4 +493,3 @@ omyColumnCalc g i j jc curColumn prev  (e1:es@(e2:es')) x (y:ys) =
                           omyColumnCalc g5 i j (jc+1) (curColumn++[currentValue]) currentValue  es x ys
        (False) -> (g,curColumn)
 omyColumnCalc g _ _ _ curColumn _ _ _ _ = (g,curColumn)
-

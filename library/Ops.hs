@@ -55,7 +55,7 @@ ifThenElse bool tb fb =
 if' :: SecureNum -> SecureNum -> SecureNum -> SecureNum
 if' bools= zipWith (ifThenElse (foldl1 (||) bools))
 
-num2Const :: Int -> SecureNum
+num2Const :: FiniteBits a => a -> SecureNum
 num2Const n = map Constant (bits2Bools n)
 
 extendBy :: Int -> SecureNum -> SecureNum
