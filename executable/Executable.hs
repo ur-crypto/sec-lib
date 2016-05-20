@@ -9,8 +9,6 @@ import qualified Producer                 as P
 import           System.Environment
 import           TestUtils
 
---Debug
-import           System.Random
 
 usage :: IO()
 usage = putStrLn "Enter producer or consumer"
