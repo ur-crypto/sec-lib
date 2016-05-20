@@ -1,5 +1,6 @@
 {-# LANGUAGE BangPatterns #-}
 module BigGate where
+import           Control.Monad
 import           Control.Parallel.Strategies
 import           Data.Bits
 import qualified Data.ByteString             as BS
@@ -32,8 +33,18 @@ bigGate ty (Input (soc, fkeys, !a)) (Input (_,_,!b)) =
       !a' <- a
       !b' <- b
       case (a', b') of
-        (Producer x, Producer y) -> doProducer x y
-        (Consumer x, Consumer y) -> doConsumer x y
+        (Producer x0 x1, Producer y0 y1) -> do
+          -- when (a' == b') $ do
+          --   print a'
+          --   print b'
+          --   putStrLn ""
+          doProducer (x0, x1) (y0, y1)
+        (Consumer x, Consumer y) -> do
+          -- when (a' == b') $ do
+          --   print a'
+          --   print b'
+          --   putStrLn ""
+          doConsumer x y
         (x@Counter {}, y@Counter {}) -> doCount x y
         _ -> error "Should not combine types"
       where
@@ -46,7 +57,7 @@ bigGate ty (Input (soc, fkeys, !a)) (Input (_,_,!b)) =
         doConsumer p q =
           case ty of
             XOR ->
-              return $ Consumer (BS.pack $ BS.zipWith xor p q)
+              return $! Consumer (BS.pack $ BS.zipWith xor p q)
             _ -> do
               let [AES fkey] = fkeys
               -- putStrLn "New Gate"
@@ -56,7 +67,7 @@ bigGate ty (Input (soc, fkeys, !a)) (Input (_,_,!b)) =
               ans <- getInput fkey p q
               -- printKey (Just False) ans
               -- putStrLn ""
-              return $ Consumer ans
+              return $! Consumer ans
               where
                 decTruthTable fkey k1 k2 [o00, o01, o10, o11] =
                   let k1' = testBit (BS.last k1) 0
@@ -80,14 +91,14 @@ bigGate ty (Input (soc, fkeys, !a)) (Input (_,_,!b)) =
                           let (x2, r2) = BS.splitAt cipherSize r1
                           let (x3, x4) = BS.splitAt cipherSize r2
                           return [x1, x2, x3, x4]
-        doProducer p q = do
+        doProducer p q =
           case ty of
             XOR -> do
               let (a0, _) = p
                   (b0, b1) = q
               let o1 = BS.pack $ BS.zipWith xor a0 b0
                   o2 = BS.pack $ BS.zipWith xor a0 b1 in
-                  return $ Producer (o1, o2)
+                  return $! Producer o1 o2
             _ -> do
               -- putStrLn "New Gate"
               let [AES fkey, RAND rkey] = fkeys
@@ -100,14 +111,14 @@ bigGate ty (Input (soc, fkeys, !a)) (Input (_,_,!b)) =
               -- printKey (Just True) q0
               -- printKey (Just True) q1
               -- putStrLn ""
-              let o = mkKeyPair fkey rkey sorted
+              let o@(o0, o1) = mkKeyPair fkey rkey sorted
               let tt = map (insertKey o) sorted
               sendInfo fkey tt
               -- let (o0, o1) = o
               -- printKey (Just True) o0
               -- printKey (Just True) o1
               -- putStrLn ""
-              return $ Producer o
+              return $! Producer o0 o1
               where
                   getTT AND (o0, o1) = helper o0 o0 o0 o1
                   getTT OR (o0, o1) = helper o0 o1 o1 o1

@@ -9,6 +9,8 @@ import qualified Producer                 as P
 import           Types
 doTest :: FiniteBits b => (Socket, Socket) -> (b, b) -> (SecureFunction) -> IO [Bool]
 doTest (csoc, psoc) (inputProduce, inputConsume) test = do
+    numGates <- countGates csoc (inputProduce, inputConsume) test
+    print numGates
     conOutHandle <- asyncBound $ C.doWithSocket csoc (inputProduce, inputConsume) test
     proOutHandle <- asyncBound $ P.doWithSocket psoc (inputProduce, inputConsume) test
     con <- wait conOutHandle
