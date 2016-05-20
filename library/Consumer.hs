@@ -6,6 +6,7 @@
 module Consumer where
 import           Data.Bits
 import qualified Data.ByteString           as BS
+import qualified Data.Map                  as M
 import           Network.Socket
 import qualified Network.Socket.ByteString as SBS
 import           Types
@@ -39,9 +40,9 @@ getSocket = do
     return conn
 
 doWithSocket :: FiniteBits a => Socket -> (a, a) -> SecureFunction -> IO [Bool]
-doWithSocket soc (produceInput, consumeInput) test = do
+doWithSocket soct (produceInput, consumeInput) test = do
     let l = finiteBitSize produceInput + finiteBitSize consumeInput
-    fkeystr <- SBS.recv soc cipherSize
+    fkeystr <- SBS.recv soct cipherSize
     -- putStr "Fkey"
     -- printKey (Just False) fkeystr
     let fkey = initFixedKey fkeystr
@@ -49,21 +50,21 @@ doWithSocket soc (produceInput, consumeInput) test = do
     -- putStrLn "Key List:"
     -- mapM_ (printKey (Just False)) keyList
     -- putStrLn ""
-    let wrapVal k= Input soc [AES fkey] (return (Consumer k))
+    let wrapVal k= Input soct [AES fkey] (return (Consumer k, M.empty))
     let (theirList, ourList) = splitAt (finiteBitSize produceInput) $ map wrapVal keyList
     receiveOutputs $ test theirList ourList
     where
       receiveList :: Int -> IO [Key]
-      receiveList num = mapM (const $ SBS.recv soc cipherSize) [1..num]
+      receiveList num = mapM (const $ SBS.recv soct cipherSize) [1..num]
       receiveOutputs :: [Literal] -> IO [Bool]
       receiveOutputs = mapM receiveNodes
           where
           receiveNodes :: Literal -> IO Bool
           receiveNodes Input {value = k'} = do
-              (Consumer k) <- k'
-              o0 <- SBS.recv soc cipherSize
-              o1 <- SBS.recv soc cipherSize
-              SBS.sendAll soc k
+              (Consumer k, _) <- k'
+              o0 <- SBS.recv soct cipherSize
+              o1 <- SBS.recv soct cipherSize
+              SBS.sendAll soct k
               return $ if
                   | k == o0 -> False
                   | k == o1 -> True
@@ -72,7 +73,7 @@ doWithSocket soc (produceInput, consumeInput) test = do
 
 doWithoutSocket ::FiniteBits a => (a, a) -> SecureFunction -> IO [Bool]
 doWithoutSocket input test = do
-    soc <- getSocket
-    ans <- doWithSocket soc input test
-    close soc
+    soct <- getSocket
+    ans <- doWithSocket soct input test
+    close soct
     return ans

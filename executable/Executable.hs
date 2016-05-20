@@ -28,9 +28,9 @@ doArgs ("both":a) = do
     csoc <- wait hcsoc
     psoc <- wait hpsoc
     case a of
-      [] -> printTest (csoc, psoc) (1::Int8,3::Int8) (jbDist 2 2)
-      [x] -> printTest (csoc, psoc) (1::Int8,3::Int8) (jbDist (read x)  (read x))
-      x:y:_ -> printTest (csoc, psoc) (1::Int8,3::Int8) (jbDist (read x) (read y))
+      [] -> printTest (csoc, psoc) (1::Int8,3::Int8) (editDist 2 2)
+      [x] -> printTest (csoc, psoc) (1::Int8,3::Int8) (editDist (read x)  (read x))
+      x:y:_ -> printTest (csoc, psoc) (1::Int8,3::Int8) (editDist (read x) (read y))
 
 doArgs _ = usage
 

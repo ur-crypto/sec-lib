@@ -2,7 +2,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NamedFieldPuns   #-}
 module BigGate where
-import           Control.Monad
 import           Control.Monad.Memo
 import           Control.Parallel.Strategies
 import           Data.Bits
@@ -52,7 +51,7 @@ bigGate ty Input {soc, keys = fkeys, value = a} Input { value = b} =
             AND -> merge {andCount = andCount merge + 1}
             OR -> merge {orCount = orCount merge + 1}
             XOR -> merge {xorCount = xorCount merge + 1}
-        -- doConsumer :: GateMemo
+        doConsumer :: GateMemo
         doConsumer (Consumer p, Consumer q) =
           case ty of
             XOR ->
@@ -63,7 +62,7 @@ bigGate ty Input {soc, keys = fkeys, value = a} Input { value = b} =
               -- printKey (Just False) p
               -- printKey (Just False) q
               -- putStrLn ""
-              ans <- getInput fkey p q
+              ans <- lift $ getInput fkey p q
               -- printKey (Just False) ans
               -- putStrLn ""
               return $! Consumer ans
@@ -91,7 +90,7 @@ bigGate ty Input {soc, keys = fkeys, value = a} Input { value = b} =
                           let (x3, x4) = BS.splitAt cipherSize r2
                           return [x1, x2, x3, x4]
 
-        -- doProducer :: GateMemo
+        doProducer :: GateMemo
         doProducer (p, q) =
           case ty of
             XOR -> do
@@ -114,7 +113,7 @@ bigGate ty Input {soc, keys = fkeys, value = a} Input { value = b} =
               -- putStrLn ""
               let o@(o0, o1) = mkKeyPair fkey rkey sorted
               let tt = map (insertKey o) sorted
-              sendInfo fkey tt
+              lift $ sendInfo fkey tt
               -- let (o0, o1) = o
               -- printKey (Just True) o0
               -- printKey (Just True) o1

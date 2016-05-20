@@ -136,29 +136,29 @@ numCmpEff as bs = [imp (Constant False) (reverse as) (reverse bs)]
 
 editDist :: Int -> Int -> SecureFunction
 editDist i j xs ys =  let
-                        xss = (take i xs)
-                        yss = (take j ys) in
+                        xss = take i xs
+                        yss = take j ys in
                         let prevCol = initDistEff (length yss) in
                          editDistEff 1 [Constant False] prevCol xss yss
 
 editDistEff :: Int -> [Literal] -> [[Literal]] -> SecureFunction
 editDistEff i topValue es (x:xs) ys =
-                  let prev = addIntEff (logCeil i) topValue [Constant True] in
-                         let updatedColumn = columnCalc i 1 [prev]  es x ys in
-                              editDistEff (i+1) prev updatedColumn xs ys
+                  let prev = addIntEff (logCeil i) topValue [Constant True]
+                      updatedColumn = columnCalc i 1 [prev]  es x ys in
+                      editDistEff (i+1) prev updatedColumn xs ys
 
 editDistEff _ _ es [] _ = (last es)
 
 columnCalc :: Int -> Int -> [[Literal]]  -> [[Literal]] -> Literal -> [Literal] -> [[Literal]]
 columnCalc i j curColumn  (e1:es@(e2:es')) x (y:ys) =
         let addValue = O.bXor x y
-            prev = last curColumn in
-                  let tempMatch = addIntEff (logCeil (max i j)) e1 [addValue]
-                      firstCompare = cmpp prev e2 in
-                   let [secondCompare] = numCmpEff firstCompare tempMatch in
-                   let secondMatch = ifzip secondCompare tempMatch firstCompare in
-                    let currentValue = (addIntEff (logCeil (max i j)) secondMatch [((O.not secondCompare) || (secondCompare && addValue))]) in
-                      columnCalc i (j+1) (curColumn++[currentValue])  es x ys
+            prev = last curColumn
+            tempMatch = addIntEff (logCeil (max i j)) e1 [addValue]
+            firstCompare = cmpp prev e2
+            [secondCompare] = numCmpEff firstCompare tempMatch
+            secondMatch = ifzip secondCompare tempMatch firstCompare
+            currentValue = addIntEff (logCeil (max i j)) secondMatch [O.not secondCompare || (secondCompare && addValue)] in
+            columnCalc i (j+1) (curColumn++[currentValue])  es x ys
 columnCalc _ _ curColumn _ _ _ = curColumn
 
 ifList :: Literal -> SecureFunction
