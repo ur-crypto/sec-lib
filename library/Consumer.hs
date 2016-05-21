@@ -1,9 +1,12 @@
 {-# LANGUAGE FlexibleContexts     #-}
 {-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE MultiWayIf           #-}
+{-# LANGUAGE NamedFieldPuns       #-}
 {-# LANGUAGE RankNTypes           #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 module Consumer where
+import           Data.Binary.Get
+import           Data.Binary.Put
 import           Data.Bits
 import qualified Data.ByteString                as BS
 import qualified Data.ByteString.Lazy           as LBS
@@ -41,6 +44,21 @@ getSocket = do
     (conn, _) <- accept sock
     return conn
 
+--not merging the gates properly
+processOutputs :: LBS.ByteString -> [Literal] ->(LBS.ByteString, [Either Bool Key])
+processOutputs startString input =
+    foldl assembler (startString, []) input
+    where
+      assembler :: (LBS.ByteString, [Either Bool Key]) -> Literal -> (LBS.ByteString, [Either Bool Key])
+      assembler (curString, accum) (Input _ Consumer {string, getKey = nextP}) =
+        (nextString, accum ++ [Right key])
+        where
+          Right (nextString, _, key) = runGetOrFail nextP curString
+      assembler (str, accum) (Constant b) = (str, accum ++ [Left b])
+      outputP full = do
+        putLazyByteString startString
+        putLazyByteString $ runPut full
+
 doWithSocket :: FiniteBits a => Socket -> (a, a) -> SecureFunction -> IO [Bool]
 doWithSocket soc (produceInput, consumeInput) test = do
     let l = finiteBitSize produceInput + finiteBitSize consumeInput
@@ -49,41 +67,41 @@ doWithSocket soc (produceInput, consumeInput) test = do
         fkey = initFixedKey (LBS.toStrict fkeystr)
         (keyList, truthTables) = LBS.splitAt (cipherSize * fromIntegral l) lazyKeys
     -- print $ mconcat [fkeystr, keyList]
-    let wrappedList = wrapList fkey keyList []
+    let wrappedList = wrapList fkey keyList truthTables []
     let (ourWrappedList, theirWrappedList) = splitAt (finiteBitSize produceInput) wrappedList
     let secureFunc = test ourWrappedList theirWrappedList
-    let (finalLazyString, sendList) = processOutputs truthTables secureFunc []
+    let (finalLazyString, sendList) = processOutputs truthTables secureFunc
     receiveOutputs finalLazyString sendList []
     where
-      wrapList :: FixedKey -> LBS.ByteString -> [Literal] -> [Literal]
-      wrapList aesKey string accum =
-        if LBS.empty == string
+      wrapList :: FixedKey -> LBS.ByteString -> LBS.ByteString -> [Literal] -> [Literal]
+      wrapList aesKey keyStr tableString accum =
+        if LBS.empty == keyStr
           then accum
           else
-            let (key, rest) = LBS.splitAt (fromIntegral cipherSize) string in
-            let lit = Input [AES aesKey] $ return $ Consumer (LBS.toStrict key) in
-            wrapList aesKey rest accum ++ [lit]
-      receiveOutputs :: LBS.ByteString -> [Either KeyType Bool] -> [Bool] -> IO [Bool]
+            let (key, rest) = LBS.splitAt (fromIntegral cipherSize) keyStr in
+            let lit = Input [AES aesKey] $ Consumer tableString (return $ LBS.toStrict key) in
+            wrapList aesKey rest tableString accum ++ [lit]
+      receiveOutputs :: LBS.ByteString -> [Either Bool Key] -> [Bool] -> IO [Bool]
       receiveOutputs _ [] accum = return accum
       receiveOutputs lazyString (x:xs) accum = do
             (rest, tf) <- receiveNodes lazyString x
             -- print tf
             receiveOutputs rest xs (accum ++ [tf])
               where
-                receiveNodes :: LBS.ByteString -> Either KeyType Bool -> IO (LBS.ByteString, Bool)
-                receiveNodes initString(Left (Consumer k)) = do
-                  let (lo0, i) = LBS.splitAt (fromIntegral cipherSize) initString
-                  let (lo1, rest) = LBS.splitAt (fromIntegral cipherSize) i
-                  let (o0, o1) = (LBS.toStrict lo0, LBS.toStrict lo1)
-                  -- printKey (Just False) o0
-                  -- printKey (Just True) o1
-                  -- printKey Nothing k
-                  SBS.sendAll soc k
-                  let tf = if | k == o0 -> False
-                              | k == o1 -> True
-                              | otherwise -> error $ "Incorrect answer found: " ++ keyString k ++ keyString o0 ++ keyString o1
-                  return (rest, tf)
-                receiveNodes x (Right k) = return (x, k)
+                receiveNodes :: LBS.ByteString -> Either Bool Key -> IO (LBS.ByteString, Bool)
+                receiveNodes x' (Left k) = return (x', k)
+                receiveNodes initString (Right k) = do
+                    let (lo0, i) = LBS.splitAt (fromIntegral cipherSize) initString
+                    let (lo1, rest) = LBS.splitAt (fromIntegral cipherSize) i
+                    let (o0, o1) = (LBS.toStrict lo0, LBS.toStrict lo1)
+                    -- printKey (Just False) o0
+                    -- printKey (Just True) o1
+                    -- printKey Nothing k
+                    SBS.sendAll soc k
+                    let tf = if | k == o0 -> False
+                                | k == o1 -> True
+                                | otherwise -> error $ "Incorrect answer found: " ++ keyString k ++ keyString o0 ++ keyString o1
+                    return (rest, tf)
 
 doWithoutSocket ::FiniteBits a => (a, a) -> SecureFunction -> IO [Bool]
 doWithoutSocket input test = do

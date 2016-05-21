@@ -15,17 +15,17 @@ usage = putStrLn "Enter producer or consumer"
 
 doArgs :: [String] -> IO()
 doArgs ("producer":_) = do
-    res <- P.doWithoutSocket (test8, testb8) (.&.)
+    res <- P.doWithoutSocket (test8, testb8) $ (.&.)
     print res
 doArgs ("consumer":_) = do
-    res <- C.doWithoutSocket (test8, testb8) (.&.)
+    res <- C.doWithoutSocket (test8, testb8) $ (.&.)
     print res
 doArgs ("both":a) = do
     hcsoc <- async C.getSocket
     hpsoc <- async P.getSocket
     csoc <- wait hcsoc
     psoc <- wait hpsoc
-    -- printTest (csoc, psoc) (1::Int8,3::Int8) (+)
+    -- printTest (csoc, psoc) (1::Int64,3::Int64) hammingDist
     let test = editDist
     case a of
       [] -> printTest (csoc, psoc) (1::Int8,3::Int8) (test 2 2)

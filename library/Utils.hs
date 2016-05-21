@@ -1,12 +1,10 @@
 {-# LANGUAGE NamedFieldPuns #-}
 module Utils where
-import           Control.Monad.State.Lazy
 import           Crypto.Cipher.AES
 import           Crypto.Cipher.Types
 import           Crypto.Error
 import           Data.Bits
-import qualified Data.ByteString          as BS
-import qualified Data.ByteString.Lazy     as LBS
+import qualified Data.ByteString      as BS
 import           Data.Int
 import           Data.Word
 import           System.Entropy
@@ -14,14 +12,14 @@ import           Text.Bytedump
 import           Types
 
 
-processOutputs :: LBS.ByteString -> [Literal] -> [Either KeyType Bool] -> (LBS.ByteString, [Either KeyType Bool])
-processOutputs lastState [] accum = (lastState, accum)
-processOutputs initialState (x:xs) accum =
-  case x of
-    Constant b' -> processOutputs initialState xs (accum ++ [Right b'])
-    Input{keyState} ->
-      let (resultValue, resultState) = runState keyState initialState in
-        processOutputs resultState xs (accum ++ [Left resultValue])
+-- processOutputs :: LBS.ByteString -> [Literal] -> [Either KeyType Bool] -> (LBS.ByteString, [Either KeyType Bool])
+-- processOutputs lastState [] accum = (lastState, accum)
+-- processOutputs initialState (x:xs) accum =
+--   case x of
+--     Constant b' -> processOutputs initialState xs (accum ++ [Right b'])
+--     Input{keyState} ->
+--       let (resultValue, resultState) = runState keyState initialState in
+--         processOutputs resultState xs (accum ++ [Left resultValue])
 
 -- In Bytes
 --

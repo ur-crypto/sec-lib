@@ -7,9 +7,8 @@ notGate (Constant b) = Constant $ not b
 notGate Input {keys, keyState} =
   Input keys changed
   where
-    changed = do
-      a' <- keyState
-      case a' of
-        Producer a0 a1 -> return $ Producer a1 a0
-        Consumer x -> return $ Consumer x
-        rec@Counter {notCount = n} -> return $ rec{notCount = n + 1}
+    changed =
+      case keyState of
+        Producer a0 a1 ab -> Producer a1 a0 ab
+        s@Consumer{} -> s
+        rec@Counter {notCount = n} -> rec{notCount = n + 1}

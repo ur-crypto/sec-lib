@@ -4,15 +4,16 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 module Producer where
 import           Control.Concurrent
-import           Control.Monad.State.Lazy
+import           Data.Binary.Put
 import           Data.Bits
 import qualified Data.ByteString.Lazy           as LBS
-import           Debug.Trace
 import           Network.Socket
 import qualified Network.Socket.ByteString      as SBS
 import qualified Network.Socket.ByteString.Lazy as LSBS
 import           Types
 import           Utils
+
+-- import           Debug.Trace
 
 type PKey = (Key, Key)
 
@@ -26,6 +27,23 @@ getSocket = do
     connect soc (addrAddress serveraddr)
     return soc
 
+processOutputs :: LBS.ByteString -> [Literal] -> (LBS.ByteString, [Either Bool (Key, Key)])
+processOutputs startString input =
+    let (full, strAcc) = foldl assembler (return (), []) input in
+    (runPut $ outputP full, strAcc)
+    where
+      assembler :: (Put, [Either Bool (Key, Key)]) -> Literal -> (Put, [Either Bool (Key, Key)])
+      assembler (accumP, accum) (Input _ Producer{key0, key1, stringBuilder = nextP}) =
+        (assM, accum ++ [Right (key0, key1)])
+        where
+          assM = do
+            putLazyByteString $ runPut accumP
+            putLazyByteString $ runPut nextP
+      assembler (accumP, accum) (Constant b) = (accumP, accum ++ [Left b])
+      outputP full = do
+        putLazyByteString startString
+        putLazyByteString $ runPut full
+
 doWithSocket :: FiniteBits a => Socket -> (a, a) -> SecureFunction -> IO [Bool]
 doWithSocket soc (inputProduce, inputConsume) test =  do
     let l = [1..finiteBitSize inputProduce + finiteBitSize inputConsume]
@@ -38,24 +56,24 @@ doWithSocket soc (inputProduce, inputConsume) test =  do
 
     let select (a0, a1) b = if b then a1 else a0
 
-    let wrap (k0, k1) = Input [AES fkey, RAND rkey] (return $ Producer k0 k1)
+    let wrap (k0, k1) = Input [AES fkey, RAND rkey] (Producer k0 k1 (return()))
     let (ourWrappedList, theirWrappedList) = (map wrap ourList, map wrap theirList)
     let sentKeys = LBS.fromStrict $ mconcat $ reverse $ zipWith select keyList bothList
     let startState = mconcat [LBS.fromStrict fkeystr, sentKeys]
     -- print startState
     let secureFunc = test ourWrappedList theirWrappedList
 
-    let (finalLazyString, sendList) = processOutputs startState secureFunc []
+    let (finalLazyString, sendList) = processOutputs startState secureFunc
 
     LSBS.sendAll soc finalLazyString
     sendOutputs sendList
     where
-      sendOutputs :: [Either KeyType Bool] -> IO [Bool]
+      sendOutputs :: [Either Bool (Key, Key)] -> IO [Bool]
       sendOutputs =
           mapM sendNodes
           where
-          sendNodes :: Either KeyType Bool -> IO Bool
-          sendNodes (Left (Producer k0 k1)) = do
+          sendNodes :: Either Bool (Key, Key) -> IO Bool
+          sendNodes (Right (k0, k1)) = do
               SBS.sendAll soc k0
               SBS.sendAll soc k1
               -- printKey (Just False) k0
@@ -67,7 +85,7 @@ doWithSocket soc (inputProduce, inputConsume) test =  do
                         | ans == k1 -> True
                         | otherwise -> error "Incorrect answer found"
               return res
-          sendNodes (Right k) = return k
+          sendNodes (Left k) = return k
 
 doWithoutSocket :: FiniteBits a => (a, a) -> SecureFunction -> IO [Bool]
 doWithoutSocket input test = do
