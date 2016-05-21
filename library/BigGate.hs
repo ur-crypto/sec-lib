@@ -34,7 +34,7 @@ bigGate ty Input {keys = fkeys, keyState = a} Input { keyState = b} =
       curState <- get
       let (a', i) = runState a curState
       let (b', upState) = runState b i
-      put $ trace (show a' ++ "\n" ++ show b') upState
+      put  upState
       case (a', b') of
         (Producer x0 x1, Producer y0 y1) -> doProducer (x0, x1) (y0, y1)
         (Consumer x, Consumer y) -> doConsumer x y
@@ -56,9 +56,9 @@ bigGate ty Input {keys = fkeys, keyState = a} Input { keyState = b} =
               let [AES fkey] = fkeys
               byteTT <- get
               let (truthTable, rest) = getInput byteTT
-              put $ trace (foldl (\w x -> (w ++ "\n" ++ x)) "" $ map keyString truthTable) rest
+              put rest
               let decrypt = decTruthTable fkey p q truthTable
-              return $ Consumer $ trace ("\n" ++ keyString decrypt ++ "\n") decrypt
+              return $ Consumer decrypt
               where
                 decTruthTable fkey k1 k2 [o00, o01, o10, o11] =
                   let k1' = testBit (BS.last k1) 0
@@ -96,11 +96,11 @@ bigGate ty Input {keys = fkeys, keyState = a} Input { keyState = b} =
               let o@(o0, o1) = mkKeyPair fkey rkey sorted
               let tt = map (insertKey o) sorted
               let list = parMap rdeepseq (enc fkey) tt
-              let lazyList = map LBS.fromStrict (trace (foldl (\w x -> (w ++ "\n" ++ x)) "" $ map keyString list) list)
+              let lazyList = map LBS.fromStrict list
               let joinedList = mconcat lazyList
               curTable <- get
               put $ LBS.append curTable joinedList
-              return $ trace ("\n" ++ keyString o0 ++ "\n" ++ keyString o1 ++ "\n") Producer o0 o1
+              return $ Producer o0 o1
               where
                   getTT AND (o0, o1) = helper o0 o0 o0 o1
                   getTT OR (o0, o1) = helper o0 o1 o1 o1

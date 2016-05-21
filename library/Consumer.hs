@@ -48,7 +48,7 @@ doWithSocket soc (produceInput, consumeInput) test = do
     let (fkeystr, lazyKeys) = LBS.splitAt cipherSize lazyReceiver
         fkey = initFixedKey (LBS.toStrict fkeystr)
         (keyList, truthTables) = LBS.splitAt (cipherSize * fromIntegral l) lazyKeys
-    print $ mconcat [fkeystr, keyList]
+    -- print $ mconcat [fkeystr, keyList]
     let wrappedList = wrapList fkey keyList []
     let (ourWrappedList, theirWrappedList) = splitAt (finiteBitSize produceInput) wrappedList
     let secureFunc = test ourWrappedList theirWrappedList
@@ -75,14 +75,14 @@ doWithSocket soc (produceInput, consumeInput) test = do
                   let (lo0, i) = LBS.splitAt (fromIntegral cipherSize) initString
                   let (lo1, rest) = LBS.splitAt (fromIntegral cipherSize) i
                   let (o0, o1) = (LBS.toStrict lo0, LBS.toStrict lo1)
-                  printKey (Just False) o0
-                  printKey (Just True) o1
-                  printKey (Nothing) k
+                  -- printKey (Just False) o0
+                  -- printKey (Just True) o1
+                  -- printKey Nothing k
                   SBS.sendAll soc k
                   let tf = if | k == o0 -> False
                               | k == o1 -> True
                               | otherwise -> error $ "Incorrect answer found: " ++ keyString k ++ keyString o0 ++ keyString o1
-                  return $ trace (show tf) (rest, tf)
+                  return (rest, tf)
                 receiveNodes x (Right k) = return (x, k)
 
 doWithoutSocket ::FiniteBits a => (a, a) -> SecureFunction -> IO [Bool]

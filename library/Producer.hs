@@ -42,7 +42,7 @@ doWithSocket soc (inputProduce, inputConsume) test =  do
     let (ourWrappedList, theirWrappedList) = (map wrap ourList, map wrap theirList)
     let sentKeys = LBS.fromStrict $ mconcat $ reverse $ zipWith select keyList bothList
     let startState = mconcat [LBS.fromStrict fkeystr, sentKeys]
-    print startState
+    -- print startState
     let secureFunc = test ourWrappedList theirWrappedList
 
     let (finalLazyString, sendList) = processOutputs startState secureFunc []
@@ -58,15 +58,15 @@ doWithSocket soc (inputProduce, inputConsume) test =  do
           sendNodes (Left (Producer k0 k1)) = do
               SBS.sendAll soc k0
               SBS.sendAll soc k1
-              printKey (Just False) k0
-              printKey (Just True) k1
+              -- printKey (Just False) k0
+              -- printKey (Just True) k1
               ans <- SBS.recv soc (fromIntegral cipherSize)
-              printKey (Nothing) ans
+              -- printKey (Nothing) ans
               let res = if
                         | ans == k0 -> False
                         | ans == k1 -> True
                         | otherwise -> error "Incorrect answer found"
-              return $ trace (show res) res
+              return res
           sendNodes (Right k) = return k
 
 doWithoutSocket :: FiniteBits a => (a, a) -> SecureFunction -> IO [Bool]
