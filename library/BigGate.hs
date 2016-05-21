@@ -1,5 +1,6 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE NamedFieldPuns   #-}
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE NamedFieldPuns    #-}
 module BigGate where
 import           Control.Parallel.Strategies
 import           Data.Binary.Get
@@ -35,7 +36,7 @@ bigGate ty Input {keys = fkeys, keyState = a} Input { keyState = b} =
     val =
       case (a, b) of
         (Producer x0 x1 xp, Producer y0 y1 yp) -> doProducer (x0, x1, xp) (y0, y1, yp)
-        (Consumer str x, Consumer _ y) -> doConsumer str x y
+        (Consumer x, Consumer y) -> doConsumer x y
         (x@Counter {}, y@Counter {}) -> doCount x y
         _ -> error "Should not combine types"
       where
@@ -45,22 +46,28 @@ bigGate ty Input {keys = fkeys, keyState = a} Input { keyState = b} =
             AND -> merge {andCount = andCount merge + 1}
             OR -> merge {orCount = orCount merge + 1}
             XOR -> merge {xorCount = xorCount merge + 1}
-        doConsumer :: LBS.ByteString -> Get Key -> Get Key -> KeyType
-        doConsumer lazyString p' q' = do
-          let Right (inter, _, p) = runGetOrFail p' lazyString
-          let Right (rest, _, q) = runGetOrFail q' inter
+        doConsumer :: Get Key -> Get Key -> KeyType
+        doConsumer p' q' = Consumer $ do
+          let feedData decoder = case decoder of
+                                    Done _ _ res -> res
+                                    Partial continue -> do
+                                      truthTable <- getByteString (fromIntegral cipherSize * 4)
+                                      feedData $ continue $ Just truthTable
+          p <- feedData $ runGetIncremental $ return p'
+          q <- feedData $ runGetIncremental $ return q'
           case ty of
             XOR ->
-              Consumer rest (return $ BS.pack $ BS.zipWith xor p q)
+              return $ BS.pack $ BS.zipWith xor p q
             _ ->
-              Consumer rest cval
+              cval
               where
                 cval :: Get Key
                 cval = do
                   let [AES fkey] = fkeys
                   byteTT <- getLazyByteString (cipherSize * 4)
                   let truthTable = getInput byteTT
-                  let decrypt = trace (foldl (\w x -> (w ++ "\n" ++ x)) "" $ map keyString truthTable) $ decTruthTable fkey p q truthTable
+                  -- let decrypt = trace (foldl (\w x -> (w ++ "\n" ++ x)) "" $ map keyString truthTable) $ decTruthTable fkey p q truthTable
+                  let decrypt = decTruthTable fkey p q truthTable
                   -- return $ trace ("\n" ++ keyString decrypt ++ "\n") decrypt
                   return decrypt
                   where
@@ -100,9 +107,10 @@ bigGate ty Input {keys = fkeys, keyState = a} Input { keyState = b} =
                   o@(o0, o1) = mkKeyPair fkey rkey sorted
                   tt = map (insertKey o) sorted
                   list = parMap rdeepseq (enc fkey) tt
-                  lazyList = map LBS.fromStrict (trace (foldl (\w x -> (w ++ "\n" ++ x)) "" $ map keyString list) list)
+                  -- lazyList = map LBS.fromStrict (trace (foldl (\w x -> (w ++ "\n" ++ x)) "" $ map keyString list) list)
+                  lazyList = map LBS.fromStrict list
                   joinedList = mconcat lazyList in
-              -- trace (keyString o0 ++ "\n" ++ keyString o1) $ Producer o0 o1 (builder joinedList)
+              -- trace (keyString o0 ++ "\n" ++ keyString o1  ++ "\n") $ Producer o0 o1 (builder joinedList)
                 Producer o0 o1 (builder joinedList)
                 where
                   getTT AND (o0, o1) = helper o0 o0 o0 o1
@@ -125,9 +133,4 @@ bigGate ty Input {keys = fkeys, keyState = a} Input { keyState = b} =
                       in mkKeyPairFromKey rkey k' oB
                   mkKeyPair _ _ _ = error "Attempting to make key pair of empty list"
                   insertKey (o0, o1) (x, y, bool) = if bool then (x, y, o1) else (x, y, o0)
-                  builder joinedList = do
-                    let as = runPut ab
-                    let bs = runPut bb
-                    putLazyByteString as
-                    putLazyByteString bs
-                    putLazyByteString joinedList
+                  builder joinedList = ab *> bb *> putLazyByteString joinedList

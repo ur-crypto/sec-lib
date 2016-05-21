@@ -1,9 +1,11 @@
+{-# LANGUAGE BangPatterns         #-}
 {-# LANGUAGE FlexibleContexts     #-}
 {-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE MultiWayIf           #-}
 {-# LANGUAGE NamedFieldPuns       #-}
 {-# LANGUAGE RankNTypes           #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+
 module Consumer where
 import           Data.Binary.Get
 import           Data.Binary.Put
@@ -50,14 +52,14 @@ processOutputs startString input =
     foldl assembler (startString, []) input
     where
       assembler :: (LBS.ByteString, [Either Bool Key]) -> Literal -> (LBS.ByteString, [Either Bool Key])
-      assembler (curString, accum) (Input _ Consumer {string, getKey = nextP}) =
+      assembler (curString, accum) (Input _ Consumer {getKey}) =
         (nextString, accum ++ [Right key])
         where
-          Right (nextString, _, key) = runGetOrFail nextP curString
+          Right (nextString, _, key) = runGetOrFail getKey curString
       assembler (str, accum) (Constant b) = (str, accum ++ [Left b])
-      outputP full = do
-        putLazyByteString startString
-        putLazyByteString $ runPut full
+      -- outputP full = do
+      --   putLazyByteString startString
+      --   putLazyByteString $ runPut full
 
 doWithSocket :: FiniteBits a => Socket -> (a, a) -> SecureFunction -> IO [Bool]
 doWithSocket soc (produceInput, consumeInput) test = do
@@ -79,7 +81,7 @@ doWithSocket soc (produceInput, consumeInput) test = do
           then accum
           else
             let (key, rest) = LBS.splitAt (fromIntegral cipherSize) keyStr in
-            let lit = Input [AES aesKey] $ Consumer tableString (return $ LBS.toStrict key) in
+            let lit = Input [AES aesKey] $ Consumer (return $ LBS.toStrict key) in
             wrapList aesKey rest tableString accum ++ [lit]
       receiveOutputs :: LBS.ByteString -> [Either Bool Key] -> [Bool] -> IO [Bool]
       receiveOutputs _ [] accum = return accum
@@ -93,11 +95,12 @@ doWithSocket soc (produceInput, consumeInput) test = do
                 receiveNodes initString (Right k) = do
                     let (lo0, i) = LBS.splitAt (fromIntegral cipherSize) initString
                     let (lo1, rest) = LBS.splitAt (fromIntegral cipherSize) i
-                    let (o0, o1) = (LBS.toStrict lo0, LBS.toStrict lo1)
+                    let (!o0, !o1) = (LBS.toStrict lo0, LBS.toStrict lo1)
                     -- printKey (Just False) o0
                     -- printKey (Just True) o1
                     -- printKey Nothing k
-                    SBS.sendAll soc k
+                    trace ("\nSending:\n" ++ keyString k ++ "\n" ++ keyString o0 ++ "\n" ++ keyString o1 ++ "\n") SBS.sendAll soc k
+                    -- SBS.sendAll soc k
                     let tf = if | k == o0 -> False
                                 | k == o1 -> True
                                 | otherwise -> error $ "Incorrect answer found: " ++ keyString k ++ keyString o0 ++ keyString o1

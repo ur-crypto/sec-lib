@@ -9,8 +9,8 @@ module Types where
 import           Crypto.Cipher.AES
 import           Data.Binary.Get
 import           Data.Binary.Put
-import           Data.ByteString      as BS
-import           Data.ByteString.Lazy as LBS
+import           Data.ByteString   as BS
+-- import           Data.ByteString.Lazy as LBS
 -- import           Text.Bytedump
 
 type Key = BS.ByteString
@@ -26,7 +26,7 @@ type SecureFunction = SecureNum -> SecureNum -> SecureNum
 
 type FixedKey = AES128
 
-data KeyType = Consumer {string :: LBS.ByteString, getKey :: Get Key}
+data KeyType = Consumer {getKey :: Get Key}
              | Producer {key0 :: Key, key1 :: Key, stringBuilder :: Put}
              | Counter {andCount :: !Int, orCount :: !Int, xorCount :: !Int, notCount :: !Int}
 

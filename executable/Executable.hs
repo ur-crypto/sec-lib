@@ -15,10 +15,10 @@ usage = putStrLn "Enter producer or consumer"
 
 doArgs :: [String] -> IO()
 doArgs ("producer":_) = do
-    res <- P.doWithoutSocket (test8, testb8) $ (.&.)
+    res <- P.doWithoutSocket (test8, testb8) $ editDist 3 3
     print res
 doArgs ("consumer":_) = do
-    res <- C.doWithoutSocket (test8, testb8) $ (.&.)
+    res <- C.doWithoutSocket (test8, testb8) $ editDist 3 3
     print res
 doArgs ("both":a) = do
     hcsoc <- async C.getSocket
