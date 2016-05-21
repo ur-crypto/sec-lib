@@ -5,9 +5,12 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 module Consumer where
 import           Data.Bits
-import qualified Data.ByteString           as BS
+import qualified Data.ByteString                as BS
+import qualified Data.ByteString.Lazy           as LBS
+import           Debug.Trace
 import           Network.Socket
-import qualified Network.Socket.ByteString as SBS
+import qualified Network.Socket.ByteString      as SBS
+import qualified Network.Socket.ByteString.Lazy as LSBS
 import           Types
 import           Utils
 
@@ -41,34 +44,46 @@ getSocket = do
 doWithSocket :: FiniteBits a => Socket -> (a, a) -> SecureFunction -> IO [Bool]
 doWithSocket soc (produceInput, consumeInput) test = do
     let l = finiteBitSize produceInput + finiteBitSize consumeInput
-    fkeystr <- SBS.recv soc cipherSize
-    -- putStr "Fkey"
-    -- printKey (Just False) fkeystr
-    let fkey = initFixedKey fkeystr
-    keyList <- receiveList l
-    -- putStrLn "Key List:"
-    -- mapM_ (printKey (Just False)) keyList
-    -- putStrLn ""
-    let wrapVal k= Input soc [AES fkey] (return (Consumer k))
-    let (theirList, ourList) = splitAt (finiteBitSize produceInput) $ map wrapVal keyList
-    receiveOutputs $ test theirList ourList
+    lazyReceiver <- LSBS.getContents soc
+    let (fkeystr, lazyKeys) = LBS.splitAt cipherSize lazyReceiver
+        fkey = initFixedKey (LBS.toStrict fkeystr)
+        (keyList, truthTables) = LBS.splitAt (cipherSize * fromIntegral l) lazyKeys
+    print $ mconcat [fkeystr, keyList]
+    let wrappedList = wrapList fkey keyList []
+    let (ourWrappedList, theirWrappedList) = splitAt (finiteBitSize produceInput) wrappedList
+    let secureFunc = test ourWrappedList theirWrappedList
+    let (finalLazyString, sendList) = processOutputs truthTables secureFunc []
+    receiveOutputs finalLazyString sendList []
     where
-      receiveList :: Int -> IO [Key]
-      receiveList num = mapM (const $ SBS.recv soc cipherSize) [1..num]
-      receiveOutputs :: [Literal] -> IO [Bool]
-      receiveOutputs = mapM receiveNodes
-          where
-          receiveNodes :: Literal -> IO Bool
-          receiveNodes Input {value = k'} = do
-              (Consumer k) <- k'
-              o0 <- SBS.recv soc cipherSize
-              o1 <- SBS.recv soc cipherSize
-              SBS.sendAll soc k
-              return $ if
-                  | k == o0 -> False
-                  | k == o1 -> True
-                  | otherwise -> error $ "Incorrect answer found: " ++ keyString k ++ keyString o0 ++ keyString o1
-          receiveNodes (Constant k) = return k
+      wrapList :: FixedKey -> LBS.ByteString -> [Literal] -> [Literal]
+      wrapList aesKey string accum =
+        if LBS.empty == string
+          then accum
+          else
+            let (key, rest) = LBS.splitAt (fromIntegral cipherSize) string in
+            let lit = Input [AES aesKey] $ return $ Consumer (LBS.toStrict key) in
+            wrapList aesKey rest accum ++ [lit]
+      receiveOutputs :: LBS.ByteString -> [Either KeyType Bool] -> [Bool] -> IO [Bool]
+      receiveOutputs _ [] accum = return accum
+      receiveOutputs lazyString (x:xs) accum = do
+            (rest, tf) <- receiveNodes lazyString x
+            -- print tf
+            receiveOutputs rest xs (accum ++ [tf])
+              where
+                receiveNodes :: LBS.ByteString -> Either KeyType Bool -> IO (LBS.ByteString, Bool)
+                receiveNodes initString(Left (Consumer k)) = do
+                  let (lo0, i) = LBS.splitAt (fromIntegral cipherSize) initString
+                  let (lo1, rest) = LBS.splitAt (fromIntegral cipherSize) i
+                  let (o0, o1) = (LBS.toStrict lo0, LBS.toStrict lo1)
+                  printKey (Just False) o0
+                  printKey (Just True) o1
+                  printKey (Nothing) k
+                  SBS.sendAll soc k
+                  let tf = if | k == o0 -> False
+                              | k == o1 -> True
+                              | otherwise -> error $ "Incorrect answer found: " ++ keyString k ++ keyString o0 ++ keyString o1
+                  return $ trace (show tf) (rest, tf)
+                receiveNodes x (Right k) = return (x, k)
 
 doWithoutSocket ::FiniteBits a => (a, a) -> SecureFunction -> IO [Bool]
 doWithoutSocket input test = do

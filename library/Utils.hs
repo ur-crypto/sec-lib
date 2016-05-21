@@ -1,26 +1,39 @@
+{-# LANGUAGE NamedFieldPuns #-}
 module Utils where
+import           Control.Monad.State.Lazy
 import           Crypto.Cipher.AES
 import           Crypto.Cipher.Types
 import           Crypto.Error
 import           Data.Bits
-import qualified Data.ByteString     as BS
+import qualified Data.ByteString          as BS
+import qualified Data.ByteString.Lazy     as LBS
+import           Data.Int
 import           Data.Word
 import           System.Entropy
 import           Text.Bytedump
 import           Types
 
+
+processOutputs :: LBS.ByteString -> [Literal] -> [Either KeyType Bool] -> (LBS.ByteString, [Either KeyType Bool])
+processOutputs lastState [] accum = (lastState, accum)
+processOutputs initialState (x:xs) accum =
+  case x of
+    Constant b' -> processOutputs initialState xs (accum ++ [Right b'])
+    Input{keyState} ->
+      let (resultValue, resultState) = runState keyState initialState in
+        processOutputs resultState xs (accum ++ [Left resultValue])
+
 -- In Bytes
 --
 
-
-cipherSize :: Int
+cipherSize :: Int64
 cipherSize = 16
 
 --DO NOT CHANGE
-keyLength :: Int
+keyLength :: Int64
 keyLength = 15
 
-padLength :: Int
+padLength :: Int64
 padLength = cipherSize - keyLength
 
 zeros :: BS.ByteString
@@ -36,11 +49,11 @@ getFills :: Bool -> (BS.ByteString, BS.ByteString)
 getFills x = (getFill x, getFill $ not x)
 
 genFixedKey :: IO BS.ByteString
-genFixedKey = getEntropy cipherSize
+genFixedKey = getEntropy (fromIntegral cipherSize)
 
 genRootKey :: IO BS.ByteString
 genRootKey = do
-  a <- getEntropy cipherSize
+  a <- getEntropy (fromIntegral cipherSize)
   let (Just (as, al)) = BS.unsnoc a
   return $ BS.snoc as (setBit al 0)
 
@@ -55,7 +68,7 @@ mkKeyPairFromKey rkey k0 sw =
 
 genKeyPair :: BS.ByteString -> IO (BS.ByteString, BS.ByteString)
 genKeyPair rkey = do
-    rnd <- getEntropy cipherSize
+    rnd <- getEntropy (fromIntegral cipherSize)
     return $ mkKeyPairFromKey rkey rnd False
 
 getAESKeys :: BS.ByteString -> BS.ByteString -> (AES128, AES128)
