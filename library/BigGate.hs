@@ -1,16 +1,18 @@
-{-# LANGUAGE BangPatterns   #-}
 {-# LANGUAGE NamedFieldPuns #-}
 module BigGate where
-import           Control.Monad
+import           Control.Monad.Trans.Reader
 import           Control.Parallel.Strategies
 import           Data.Bits
 import qualified Data.ByteString             as BS
+import qualified Data.ByteString.Lazy        as LBS
 import           Data.List
-import           Debug.Trace
-import qualified Network.Socket.ByteString   as SBS
+
 import           NotGate
+import           Pipes
 import           Types
 import           Utils
+
+-- import           Debug.Trace
 
 bigGate :: GateType -> SecureGate
 bigGate ty (Constant a) (Constant b) =
@@ -27,12 +29,12 @@ bigGate ty (a@Input {}) (Constant b) = partialConstant ty a b
     partialConstant OR _ True = Constant True
     partialConstant XOR key False = key
     partialConstant XOR key True = notGate key
-bigGate ty Input {soc, keys = fkeys, value = a} Input { value = b} =
-  Input soc fkeys val
+bigGate ty (Input a) (Input b) =
+  Input val
   where
     val = do
-      !a' <- a
-      !b' <- b
+      a' <- a
+      b' <- b
       case (a', b') of
         (Producer x0 x1, Producer y0 y1) -> do
           -- when (a' == b') $ do
@@ -56,20 +58,27 @@ bigGate ty Input {soc, keys = fkeys, value = a} Input { value = b} =
             AND -> merge {andCount = andCount merge + 1}
             OR -> merge {orCount = orCount merge + 1}
             XOR -> merge {xorCount = xorCount merge + 1}
+        doConsumer :: BS.ByteString -> BS.ByteString -> KeyM
         doConsumer p q =
           case ty of
             XOR ->
-              return $! Consumer (BS.pack $ BS.zipWith xor p q)
+              return $ Consumer (BS.pack $ BS.zipWith xor p q)
             _ -> do
-              let [AES fkey] = fkeys
+              [AES fkey] <- lift ask
               -- putStrLn "New Gate"
               -- printKey (Just False) p
               -- printKey (Just False) q
               -- putStrLn ""
-              ans <- getInput fkey p q
+              x1 <- await
+              x2 <- await
+              x3 <- await
+              x4 <- await
+
+              let tt = map LBS.toStrict [x1, x2, x3, x4]
+              let o = decTruthTable fkey p q tt
               -- printKey (Just False) ans
               -- putStrLn ""
-              return $! Consumer ans
+              return $ Consumer o
               where
                 decTruthTable fkey k1 k2 [o00, o01, o10, o11] =
                   let k1' = testBit (BS.last k1) 0
@@ -81,18 +90,7 @@ bigGate ty Input {soc, keys = fkeys, value = a} Input { value = b} =
                         (True, True) -> o11
                         in
                   enc fkey (k1, k2, o)
-                getInput fkey x y = do
-                  tt <- getTT
-                  let !o = --trace(" We are processing gate"++(show tt)++"---"++(show x)++","++(show y))
-                           decTruthTable fkey x y tt
-                  return o
-                  where
-                      getTT = do
-                          byteTT <- SBS.recv soc (4 * cipherSize)
-                          let (x1, r1) = BS.splitAt cipherSize byteTT
-                          let (x2, r2) = BS.splitAt cipherSize r1
-                          let (x3, x4) = BS.splitAt cipherSize r2
-                          return [x1, x2, x3, x4]
+        doProducer :: (Key, Key) -> (Key, Key) -> KeyM
         doProducer p q =
           case ty of
             XOR -> do
@@ -100,10 +98,10 @@ bigGate ty Input {soc, keys = fkeys, value = a} Input { value = b} =
                   (b0, b1) = q
               let o1 = BS.pack $ BS.zipWith xor a0 b0
                   o2 = BS.pack $ BS.zipWith xor a0 b1 in
-                  return $! Producer o1 o2
+                  return $ Producer o1 o2
             _ -> do
               -- putStrLn "New Gate"
-              let [AES fkey, RAND rkey] = fkeys
+              [AES fkey, RAND rkey] <- lift ask
               let unsorted = getTT ty (False, True) p q
               let sorted = sortBy order unsorted
               -- let (p0, p1) = p
@@ -115,7 +113,10 @@ bigGate ty Input {soc, keys = fkeys, value = a} Input { value = b} =
               -- putStrLn ""
               let o@(o0, o1) = mkKeyPair fkey rkey sorted
               let tt = map (insertKey o) sorted
-              sendInfo fkey tt
+              let encTruthTable = parMap rdeepseq (enc fkey)
+              let list = encTruthTable tt
+              let lazyList = mconcat $ map LBS.fromStrict list
+              yield lazyList
               -- let (o0, o1) = o
               -- printKey (Just True) o0
               -- printKey (Just True) o1
@@ -142,10 +143,3 @@ bigGate ty Input {soc, keys = fkeys, value = a} Input { value = b} =
                       in mkKeyPairFromKey rkey k' oB
                   mkKeyPair _ _ _ = error "Attempting to make key pair of empty list"
                   insertKey (o0, o1) (x, y, bool) = if bool then (x, y, o1) else (x, y, o0)
-                  sendInfo fkey tt = do
-                    let list = encTruthTable tt
-                    -- mapM_ (printKey (Just True)) list
-                    -- putStrLn ""
-                    SBS.sendMany soc list
-                    where
-                      encTruthTable = parMap rdeepseq (enc fkey)

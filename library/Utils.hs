@@ -1,26 +1,49 @@
+{-# LANGUAGE NamedFieldPuns #-}
 module Utils where
 import           Crypto.Cipher.AES
 import           Crypto.Cipher.Types
 import           Crypto.Error
 import           Data.Bits
-import qualified Data.ByteString     as BS
+import qualified Data.ByteString                as BS
+import qualified Data.ByteString.Lazy           as LBS
+import           Data.Int
 import           Data.Word
 import           System.Entropy
 import           Text.Bytedump
 import           Types
 
+import           Network.Socket
+-- import qualified Network.Socket.ByteString      as SBS
+import qualified Network.Socket.ByteString.Lazy as LSBS
+
+import           Pipes
+import           Pipes.Lift
+-- import qualified Pipes.Network.TCP              as P
+
+
+processOutputs ::  Socket -> [KeyContext] -> [Literal] -> (Literal -> GenM Bool) -> IO [Bool]
+processOutputs soc keys values wrapOutputs = do
+  let toBool = map wrapOutputs values
+  let doReaders = map (runReaderP keys) toBool
+  let attachServer = map (\x -> (lift $ LSBS.recv soc (fromIntegral cipherSize)) >~ for x (lift . LSBS.sendAll soc)) doReaders
+  mapM runEffect attachServer
+  where
+    -- fromOther = (lift $ LSBS.getContents soc) >~ do
+    --   bigString <- await
+    --   let (val, rest) =  LBS.splitAt cipherSize bigString
+    --   yield rest
+    -- toOther = LSBS.sendAll ~<
 -- In Bytes
 --
 
-
-cipherSize :: Int
+cipherSize :: Int64
 cipherSize = 16
 
 --DO NOT CHANGE
-keyLength :: Int
+keyLength :: Int64
 keyLength = 15
 
-padLength :: Int
+padLength :: Int64
 padLength = cipherSize - keyLength
 
 zeros :: BS.ByteString
@@ -36,11 +59,11 @@ getFills :: Bool -> (BS.ByteString, BS.ByteString)
 getFills x = (getFill x, getFill $ not x)
 
 genFixedKey :: IO BS.ByteString
-genFixedKey = getEntropy cipherSize
+genFixedKey = getEntropy (fromIntegral cipherSize)
 
 genRootKey :: IO BS.ByteString
 genRootKey = do
-  a <- getEntropy cipherSize
+  a <- getEntropy (fromIntegral cipherSize)
   let (Just (as, al)) = BS.unsnoc a
   return $ BS.snoc as (setBit al 0)
 
@@ -55,7 +78,7 @@ mkKeyPairFromKey rkey k0 sw =
 
 genKeyPair :: BS.ByteString -> IO (BS.ByteString, BS.ByteString)
 genKeyPair rkey = do
-    rnd <- getEntropy cipherSize
+    rnd <- getEntropy (fromIntegral cipherSize)
     return $ mkKeyPairFromKey rkey rnd False
 
 getAESKeys :: BS.ByteString -> BS.ByteString -> (AES128, AES128)

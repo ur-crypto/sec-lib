@@ -1,12 +1,22 @@
-{-# LANGUAGE BangPatterns         #-}
 {-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE MultiWayIf           #-}
+{-# LANGUAGE NamedFieldPuns       #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+
 module Producer where
-import           Control.Concurrent
+import           Control.Concurrent             hiding (yield)
+import           Control.Monad.Trans.Reader
 import           Data.Bits
+import qualified Data.ByteString.Lazy           as LBS
 import           Network.Socket
-import qualified Network.Socket.ByteString as SBS
+import qualified Network.Socket.ByteString      as SBS
+import qualified Network.Socket.ByteString.Lazy as LSBS
+
+import           Pipes
+import           Pipes.Lift
+import qualified Pipes.Network.TCP              as P
+
+import           System.Entropy
 import           Types
 import           Utils
 
@@ -22,6 +32,8 @@ getSocket = do
     connect soc (addrAddress serveraddr)
     return soc
 
+
+
 sendList :: Socket -> [(Key, Key)] -> [Bool] -> IO()
 sendList _ [] [] = return ()
 sendList soc ((kp0, kp1):kps) (b:bs)= do
@@ -35,7 +47,7 @@ sendList soc ((kp0, kp1):kps) (b:bs)= do
 sendList _ _ _ = return $ error "Unbalanced send list"
 
 doWithSocket :: FiniteBits a => Socket -> (a, a) -> SecureFunction -> IO [Bool]
-doWithSocket soc (inputProduce, inputConsume) test =  do
+doWithSocket soc (inputProduce, inputConsume) test = do
     let l = [1..finiteBitSize inputProduce + finiteBitSize inputConsume]
     rkey <- genRootKey
     fkeystr <- genFixedKey
@@ -49,26 +61,22 @@ doWithSocket soc (inputProduce, inputConsume) test =  do
     -- putStrLn "Key List:"
     sendList soc keyList bothList
     -- putStrLn ""
-    let wrap (k0, k1) = Input soc [AES fkey, RAND rkey] (return $ Producer k0 k1)
+    let wrap (k0, k1) = Input (return $ Producer k0 k1)
     let (ourWrappedList, theirWrappedList) = (map wrap ourList, map wrap theirList)
-    let !res = test ourWrappedList theirWrappedList
-    sendOutputs res
-    where
-    sendOutputs :: [Literal] -> IO [Bool]
-    sendOutputs =
-        mapM sendNodes
-        where
-        sendNodes :: Literal -> IO Bool
-        sendNodes Input {value = k'} = do
-            (Producer k0 k1) <- k'
-            SBS.sendAll soc k0
-            SBS.sendAll soc k1
-            ans <- SBS.recv soc cipherSize
-            return $ if
-                | ans == k0 -> False
-                | ans == k1 -> True
-                | otherwise -> error "Incorrect answer found"
-        sendNodes (Constant k) = return k
+    processOutputs soc [AES fkey, RAND rkey] (test ourWrappedList theirWrappedList) wrapConstants
+      where
+        wrapConstants :: Literal -> GenM Bool
+        wrapConstants Input{keym} = do
+          (Producer x0' x1') <- keym
+          let (x0, x1) = (LBS.fromStrict x0', LBS.fromStrict x1')
+          yield x0
+          yield x1
+          ans <- await
+          return $ if
+              | ans == x0 -> False
+              | ans == x1 -> True
+              | otherwise -> error "Incorrect answer found"
+        wrapConstants (Constant b) = return b
 
 doWithoutSocket :: FiniteBits a => (a, a) -> SecureFunction -> IO [Bool]
 doWithoutSocket input test = do

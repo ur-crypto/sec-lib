@@ -4,10 +4,18 @@
 {-# LANGUAGE RankNTypes           #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 module Consumer where
+import           Control.Monad.Trans.Reader
 import           Data.Bits
-import qualified Data.ByteString           as BS
+import qualified Data.ByteString                as BS
+import qualified Data.ByteString.Lazy           as LBS
 import           Network.Socket
-import qualified Network.Socket.ByteString as SBS
+import qualified Network.Socket.ByteString      as SBS
+import qualified Network.Socket.ByteString.Lazy as LSBS
+
+import           Pipes
+import           Pipes.Lift
+import qualified Pipes.Network.TCP              as P
+
 import           Types
 import           Utils
 
@@ -41,7 +49,7 @@ getSocket = do
 doWithSocket :: FiniteBits a => Socket -> (a, a) -> SecureFunction -> IO [Bool]
 doWithSocket soc (produceInput, consumeInput) test = do
     let l = finiteBitSize produceInput + finiteBitSize consumeInput
-    fkeystr <- SBS.recv soc cipherSize
+    fkeystr <- SBS.recv soc $ fromIntegral cipherSize
     -- putStr "Fkey"
     -- printKey (Just False) fkeystr
     let fkey = initFixedKey fkeystr
@@ -49,26 +57,24 @@ doWithSocket soc (produceInput, consumeInput) test = do
     -- putStrLn "Key List:"
     -- mapM_ (printKey (Just False)) keyList
     -- putStrLn ""
-    let wrapVal k= Input soc [AES fkey] (return (Consumer k))
+    let wrapVal k= Input (return (Consumer k))
     let (theirList, ourList) = splitAt (finiteBitSize produceInput) $ map wrapVal keyList
-    receiveOutputs $ test theirList ourList
+    processOutputs soc [AES fkey] (test theirList ourList) receiveOutputs
     where
       receiveList :: Int -> IO [Key]
-      receiveList num = mapM (const $ SBS.recv soc cipherSize) [1..num]
-      receiveOutputs :: [Literal] -> IO [Bool]
-      receiveOutputs = mapM receiveNodes
-          where
-          receiveNodes :: Literal -> IO Bool
-          receiveNodes Input {value = k'} = do
-              (Consumer k) <- k'
-              o0 <- SBS.recv soc cipherSize
-              o1 <- SBS.recv soc cipherSize
-              SBS.sendAll soc k
-              return $ if
-                  | k == o0 -> False
-                  | k == o1 -> True
-                  | otherwise -> error $ "Incorrect answer found: " ++ keyString k ++ keyString o0 ++ keyString o1
-          receiveNodes (Constant k) = return k
+      receiveList num = mapM (const $ SBS.recv soc $ fromIntegral cipherSize) [1..num]
+      receiveOutputs :: Literal -> GenM Bool
+      receiveOutputs (Input x') = do
+        (Consumer x) <- x'
+        let k = LBS.fromStrict x
+        o0 <- await
+        o1 <- await
+        yield k
+        return $ if
+            | k == o0 -> False
+            | k == o1 -> True
+            | otherwise -> error $ "Incorrect answer found: " ++ keyString x ++ keyString (LBS.toStrict o0) ++ keyString (LBS.toStrict o1)
+      receiveOutputs (Constant k) = return k
 
 doWithoutSocket ::FiniteBits a => (a, a) -> SecureFunction -> IO [Bool]
 doWithoutSocket input test = do

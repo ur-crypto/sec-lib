@@ -6,17 +6,23 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 
 module Types where
+import           Control.Monad.Trans.Reader
 import           Crypto.Cipher.AES
-import           Data.ByteString   as BS
+import           Data.ByteString            as BS
+import           Data.ByteString.Lazy       as LBS
 import           Network.Socket
+import           Pipes
 import           Text.Bytedump
 
 type Key = BS.ByteString
 type CTT = TruthTable Key
 type PTT = TruthTable (Key, Key, Key)
 type TruthTable a = [a,a,a,a]
+type GenM = Pipe LBS.ByteString LBS.ByteString (ReaderT [KeyContext] IO)
+type SecureNumM = GenM SecureNum
+type KeyM = GenM KeyType
 data Literal = Constant Bool
-              | Input {soc :: Socket, keys ::  [KeyContext], value :: IO KeyType}
+              | Input {keym :: KeyM}
 type SecureGate = Literal -> Literal -> Literal
 type SecureNum = [Literal]
 type SecureFunction = SecureNum -> SecureNum -> SecureNum
