@@ -43,6 +43,7 @@ library
         array,
         parallel,
         split,
+        blaze-builder,
         deepseq,
         pipes,
         pipes-network,

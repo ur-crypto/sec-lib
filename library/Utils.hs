@@ -21,13 +21,13 @@ import           Pipes.Lift
 -- import qualified Pipes.Network.TCP              as P
 
 
-processOutputs ::  Socket -> [KeyContext] -> [Literal] -> (Literal -> GenM Bool) -> IO [Bool]
+processOutputs ::  Socket -> [KeyContext] -> [Literal] -> (Literal -> Consumer LBS.ByteString FixedKeyM Bool) -> IO [Bool]
 processOutputs soc keys values wrapOutputs = do
   let toBool = map wrapOutputs values
   let doReaders = map (runReaderP keys) toBool
-  let attachServer = map (\x -> (lift $ LSBS.recv soc (fromIntegral cipherSize)) >~ for x (lift . LSBS.sendAll soc)) doReaders
+  let attachServer = map (\x -> lift (LSBS.recv soc (fromIntegral cipherSize)) >~ x) doReaders
   mapM runEffect attachServer
-  where
+--   where
     -- fromOther = (lift $ LSBS.getContents soc) >~ do
     --   bigString <- await
     --   let (val, rest) =  LBS.splitAt cipherSize bigString

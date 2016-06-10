@@ -3,9 +3,12 @@ module BigGate where
 import           Control.Monad.Trans.Reader
 import           Control.Parallel.Strategies
 import           Data.Bits
-import qualified Data.ByteString             as BS
-import qualified Data.ByteString.Lazy        as LBS
+import qualified Data.ByteString                     as BS
+import qualified Data.ByteString.Lazy                as LBS
 import           Data.List
+
+import           Blaze.ByteString.Builder
+import           Blaze.ByteString.Builder.ByteString
 
 import           NotGate
 import           Pipes
@@ -30,31 +33,21 @@ bigGate ty (a@Input {}) (Constant b) = partialConstant ty a b
     partialConstant XOR key False = key
     partialConstant XOR key True = notGate key
 bigGate ty (Input a) (Input b) =
-  Input val
+  Input $ for a $ merge b
   where
-    val = do
-      a' <- a
-      b' <- b
+    merge b' a = for b' $ val a
+    val a' b'=
       case (a', b') of
-        (Producer x0 x1, Producer y0 y1) -> do
-          -- when (a' == b') $ do
-          --   print a'
-          --   print b'
-          --   putStrLn ""
-          -- traceStack (show ty ++ "\n" ++ show a' ++ "\n" ++ show b') $ doProducer (x0, x1) (y0, y1)
-          doProducer (x0, x1) (y0, y1)
-        (Consumer x, Consumer y) -> do
-          -- when (a' == b') $ do
-          --   print a'
-          --   print b'
-          --   putStrLn ""
+        (Producer x0 x1 sx, Producer y0 y1 sy) ->
+          doProducer (x0, x1) (y0, y1) (mappend sx sy)
+        (Consumer x, Consumer y) ->
           doConsumer x y
         (x@Counter {}, y@Counter {}) -> doCount x y
         _ -> error "Should not combine types"
       where
         doCount p q =
           let merge = Counter {andCount = andCount p + andCount q, orCount = orCount p + orCount q, xorCount = xorCount p + xorCount q, notCount = notCount p + notCount q} in
-          return $ case ty of
+          yield $ case ty of
             AND -> merge {andCount = andCount merge + 1}
             OR -> merge {orCount = orCount merge + 1}
             XOR -> merge {xorCount = xorCount merge + 1}
@@ -62,7 +55,7 @@ bigGate ty (Input a) (Input b) =
         doConsumer p q =
           case ty of
             XOR ->
-              return $ Consumer (BS.pack $ BS.zipWith xor p q)
+              yield $ Consumer (BS.pack $ BS.zipWith xor p q)
             _ -> do
               [AES fkey] <- lift ask
               -- putStrLn "New Gate"
@@ -78,7 +71,7 @@ bigGate ty (Input a) (Input b) =
               let o = decTruthTable fkey p q tt
               -- printKey (Just False) ans
               -- putStrLn ""
-              return $ Consumer o
+              yield $ Consumer o
               where
                 decTruthTable fkey k1 k2 [o00, o01, o10, o11] =
                   let k1' = testBit (BS.last k1) 0
@@ -90,15 +83,15 @@ bigGate ty (Input a) (Input b) =
                         (True, True) -> o11
                         in
                   enc fkey (k1, k2, o)
-        doProducer :: (Key, Key) -> (Key, Key) -> KeyM
-        doProducer p q =
+        doProducer :: (Key, Key) -> (Key, Key) -> Builder -> KeyM
+        doProducer p q s =
           case ty of
             XOR -> do
               let (a0, _) = p
                   (b0, b1) = q
               let o1 = BS.pack $ BS.zipWith xor a0 b0
                   o2 = BS.pack $ BS.zipWith xor a0 b1 in
-                  return $ Producer o1 o2
+                  yield $ Producer o1 o2 s
             _ -> do
               -- putStrLn "New Gate"
               [AES fkey, RAND rkey] <- lift ask
@@ -115,13 +108,12 @@ bigGate ty (Input a) (Input b) =
               let tt = map (insertKey o) sorted
               let encTruthTable = parMap rdeepseq (enc fkey)
               let list = encTruthTable tt
-              let lazyList = mconcat $ map LBS.fromStrict list
-              yield lazyList
+              let lazyList = fromWriteList writeByteString list
               -- let (o0, o1) = o
               -- printKey (Just True) o0
               -- printKey (Just True) o1
               -- putStrLn ""
-              return $! Producer o0 o1
+              yield $ Producer o0 o1 lazyList
               where
                   getTT AND (o0, o1) = helper o0 o0 o0 o1
                   getTT OR (o0, o1) = helper o0 o1 o1 o1
