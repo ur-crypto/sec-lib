@@ -16,6 +16,8 @@ import           Pipes
 import           Pipes.Lift
 import qualified Pipes.Network.TCP              as P
 
+import           Blaze.ByteString.Builder
+
 import           System.Entropy
 import           Types
 import           Utils
@@ -60,23 +62,32 @@ doWithSocket soc (inputProduce, inputConsume) test = do
     let bothList = bits2Bools inputProduce ++ bits2Bools inputConsume
     -- putStrLn "Key List:"
     sendList soc keyList bothList
-    -- putStrLn ""
-    let wrap (k0, k1) = Input (return $ Producer k0 k1)
+    -- putStrLn "
+    let wrap (k0, k1) = Input (yield $ Producer k0 k1 mempty)
     let (ourWrappedList, theirWrappedList) = (map wrap ourList, map wrap theirList)
-    processOutputs soc [AES fkey, RAND rkey] (test ourWrappedList theirWrappedList) wrapConstants
+    let wrappedTests = map wrapLiterals $ test ourWrappedList theirWrappedList
+    let valProducer = mconcat wrappedTests
+    let sentTables = valProducer >-> sendTables
+    keyOutputs <- findHeadValues soc [AES fkey, RAND rkey] sentTables
+    processOutputs soc keyOutputs wrapConstants
       where
-        wrapConstants :: Literal -> GenM Bool
-        wrapConstants Input{keym} = do
-          (Producer x0' x1') <- keym
-          let (x0, x1) = (LBS.fromStrict x0', LBS.fromStrict x1')
-          yield x0
-          yield x1
-          ans <- await
-          return $ if
-              | ans == x0 -> False
-              | ans == x1 -> True
-              | otherwise -> error "Incorrect answer found"
-        wrapConstants (Constant b) = return b
+        wrapConstants :: Either Bool KeyType -> Pipe LBS.ByteString LBS.ByteString IO Bool
+        wrapConstants (Right (Producer x0' x1' str)) = do
+              let (x0, x1) = (LBS.fromStrict x0', LBS.fromStrict x1')
+              yield x0
+              yield x1
+              ans <- await
+              return $ if
+                  | ans == x0 -> False
+                  | ans == x1 -> True
+                  | otherwise -> error "Incorrect answer found"
+        wrapConstants (Left b) = return b
+        sendTables = do
+          x <- await
+          case x of
+            Right (Producer _ _ str) -> lift $ lift (LSBS.sendAll soc (toLazyByteString str))
+          yield x
+
 
 doWithoutSocket :: FiniteBits a => (a, a) -> SecureFunction -> IO [Bool]
 doWithoutSocket input test = do

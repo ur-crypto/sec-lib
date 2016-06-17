@@ -13,3 +13,4 @@ notGate (Input calculation) =
         Producer a0 a1 x -> Producer a1 a0 x
         Consumer x -> Consumer x
         rec@Counter {notCount = n} -> rec{notCount = n + 1}
+      -- return Nothing

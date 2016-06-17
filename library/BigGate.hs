@@ -35,6 +35,7 @@ bigGate ty (a@Input {}) (Constant b) = partialConstant ty a b
 bigGate ty (Input a) (Input b) =
   Input $ for a $ merge b
   where
+    merge :: Proxy () LBS.ByteString (Maybe Bool) KeyType FixedKeyM (Maybe Bool) -> KeyType -> Proxy () LBS.ByteString () KeyType FixedKeyM (Maybe Bool)
     merge b' a = for b' $ val a
     val a' b'=
       case (a', b') of
@@ -45,17 +46,19 @@ bigGate ty (Input a) (Input b) =
         (x@Counter {}, y@Counter {}) -> doCount x y
         _ -> error "Should not combine types"
       where
-        doCount p q =
-          let merge = Counter {andCount = andCount p + andCount q, orCount = orCount p + orCount q, xorCount = xorCount p + xorCount q, notCount = notCount p + notCount q} in
+        doCount p q = do
+          let merge = Counter {andCount = andCount p + andCount q, orCount = orCount p + orCount q, xorCount = xorCount p + xorCount q, notCount = notCount p + notCount q}
           yield $ case ty of
             AND -> merge {andCount = andCount merge + 1}
             OR -> merge {orCount = orCount merge + 1}
             XOR -> merge {xorCount = xorCount merge + 1}
+          return Nothing
         doConsumer :: BS.ByteString -> BS.ByteString -> KeyM
         doConsumer p q =
           case ty of
-            XOR ->
+            XOR -> do
               yield $ Consumer (BS.pack $ BS.zipWith xor p q)
+              return Nothing
             _ -> do
               [AES fkey] <- lift ask
               -- putStrLn "New Gate"
@@ -72,6 +75,7 @@ bigGate ty (Input a) (Input b) =
               -- printKey (Just False) ans
               -- putStrLn ""
               yield $ Consumer o
+              return Nothing
               where
                 decTruthTable fkey k1 k2 [o00, o01, o10, o11] =
                   let k1' = testBit (BS.last k1) 0
@@ -90,8 +94,9 @@ bigGate ty (Input a) (Input b) =
               let (a0, _) = p
                   (b0, b1) = q
               let o1 = BS.pack $ BS.zipWith xor a0 b0
-                  o2 = BS.pack $ BS.zipWith xor a0 b1 in
+                  o2 = BS.pack $ BS.zipWith xor a0 b1 in do
                   yield $ Producer o1 o2 s
+                  return Nothing
             _ -> do
               -- putStrLn "New Gate"
               [AES fkey, RAND rkey] <- lift ask
@@ -114,6 +119,7 @@ bigGate ty (Input a) (Input b) =
               -- printKey (Just True) o1
               -- putStrLn ""
               yield $ Producer o0 o1 lazyList
+              return Nothing
               where
                   getTT AND (o0, o1) = helper o0 o0 o0 o1
                   getTT OR (o0, o1) = helper o0 o1 o1 o1

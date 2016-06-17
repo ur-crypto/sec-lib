@@ -1,8 +1,11 @@
-{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE NamedFieldPuns      #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module Utils where
 import           Crypto.Cipher.AES
 import           Crypto.Cipher.Types
 import           Crypto.Error
+
+import           Control.Monad
 import           Data.Bits
 import qualified Data.ByteString                as BS
 import qualified Data.ByteString.Lazy           as LBS
@@ -18,14 +21,22 @@ import qualified Network.Socket.ByteString.Lazy as LSBS
 
 import           Pipes
 import           Pipes.Lift
+import qualified Pipes.Prelude                  as P
 -- import qualified Pipes.Network.TCP              as P
 
+wrapLiterals :: Literal -> Proxy () LBS.ByteString () (Either Bool KeyType) FixedKeyM ()
+wrapLiterals (Constant b) = forever $ yield $ Left b
+wrapLiterals (Input a) = forever $ a >-> (await >>= (yield . Right) )
 
-processOutputs ::  Socket -> [KeyContext] -> [Literal] -> (Literal -> Consumer LBS.ByteString FixedKeyM Bool) -> IO [Bool]
-processOutputs soc keys values wrapOutputs = do
+findHeadValues :: Socket -> [KeyContext] -> Proxy () LBS.ByteString () (Either Bool KeyType) FixedKeyM () -> IO [Either Bool KeyType]
+findHeadValues soc keys wrappedValues = do
+  let doReaders = runReaderP keys wrappedValues
+  P.toListM $ lift (LSBS.recv soc (fromIntegral cipherSize)) >~ doReaders
+
+processOutputs ::  Socket -> [Either Bool KeyType] -> (Either Bool KeyType -> Pipe LBS.ByteString LBS.ByteString IO Bool) -> IO [Bool]
+processOutputs soc values wrapOutputs = do
   let toBool = map wrapOutputs values
-  let doReaders = map (runReaderP keys) toBool
-  let attachServer = map (\x -> lift (LSBS.recv soc (fromIntegral cipherSize)) >~ x) doReaders
+  let attachServer = map (\x -> lift (LSBS.recv soc (fromIntegral cipherSize)) >~ for x (lift . LSBS.sendAll soc)) toBool
   mapM runEffect attachServer
 --   where
     -- fromOther = (lift $ LSBS.getContents soc) >~ do
