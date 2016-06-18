@@ -35,7 +35,6 @@ bigGate ty (a@Input {}) (Constant b) = partialConstant ty a b
 bigGate ty (Input a) (Input b) =
   Input $ for a $ merge b
   where
-    merge :: Proxy () LBS.ByteString (Maybe Bool) KeyType FixedKeyM (Maybe Bool) -> KeyType -> Proxy () LBS.ByteString () KeyType FixedKeyM (Maybe Bool)
     merge b' a = for b' $ val a
     val a' b'=
       case (a', b') of
@@ -52,19 +51,17 @@ bigGate ty (Input a) (Input b) =
             AND -> merge {andCount = andCount merge + 1}
             OR -> merge {orCount = orCount merge + 1}
             XOR -> merge {xorCount = xorCount merge + 1}
-          return Nothing
         doConsumer :: BS.ByteString -> BS.ByteString -> KeyM
         doConsumer p q =
           case ty of
             XOR -> do
               yield $ Consumer (BS.pack $ BS.zipWith xor p q)
-              return Nothing
             _ -> do
               [AES fkey] <- lift ask
-              -- putStrLn "New Gate"
-              -- printKey (Just False) p
-              -- printKey (Just False) q
-              -- putStrLn ""
+              -- lift . lift $ putStrLn "New Gate"
+              -- lift . lift $ printKey (Just False) p
+              -- lift . lift $ printKey (Just False) q
+              -- lift . lift $ putStrLn ""
               x1 <- await
               x2 <- await
               x3 <- await
@@ -72,10 +69,9 @@ bigGate ty (Input a) (Input b) =
 
               let tt = map LBS.toStrict [x1, x2, x3, x4]
               let o = decTruthTable fkey p q tt
-              -- printKey (Just False) ans
-              -- putStrLn ""
+              -- lift . lift $ printKey (Just False) o
+              -- lift . lift $ putStrLn ""
               yield $ Consumer o
-              return Nothing
               where
                 decTruthTable fkey k1 k2 [o00, o01, o10, o11] =
                   let k1' = testBit (BS.last k1) 0
@@ -96,30 +92,28 @@ bigGate ty (Input a) (Input b) =
               let o1 = BS.pack $ BS.zipWith xor a0 b0
                   o2 = BS.pack $ BS.zipWith xor a0 b1 in do
                   yield $ Producer o1 o2 s
-                  return Nothing
             _ -> do
-              -- putStrLn "New Gate"
+              lift . lift $ putStrLn "New Gate"
               [AES fkey, RAND rkey] <- lift ask
               let unsorted = getTT ty (False, True) p q
               let sorted = sortBy order unsorted
               -- let (p0, p1) = p
               -- let (q0, q1) = q
-              -- printKey (Just True) p0
-              -- printKey (Just True) p1
-              -- printKey (Just True) q0
-              -- printKey (Just True) q1
-              -- putStrLn ""
+              -- lift . lift $ printKey (Just True) p0
+              -- lift . lift $ printKey (Just True) p1
+              -- lift . lift $ printKey (Just True) q0
+              -- lift . lift $ printKey (Just True) q1
+              -- lift . lift $ putStrLn ""
               let o@(o0, o1) = mkKeyPair fkey rkey sorted
               let tt = map (insertKey o) sorted
               let encTruthTable = parMap rdeepseq (enc fkey)
               let list = encTruthTable tt
               let lazyList = fromWriteList writeByteString list
               -- let (o0, o1) = o
-              -- printKey (Just True) o0
-              -- printKey (Just True) o1
-              -- putStrLn ""
+              -- lift . lift $ printKey (Just True) o0
+              -- lift . lift $ printKey (Just True) o1
+              -- lift . lift $ putStrLn ""
               yield $ Producer o0 o1 lazyList
-              return Nothing
               where
                   getTT AND (o0, o1) = helper o0 o0 o0 o1
                   getTT OR (o0, o1) = helper o0 o1 o1 o1

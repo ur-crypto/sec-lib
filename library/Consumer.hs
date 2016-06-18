@@ -57,15 +57,16 @@ doWithSocket soc (produceInput, consumeInput) test = do
     -- putStrLn "Key List:"
     -- mapM_ (printKey (Just False)) keyList
     -- putStrLn ""
-    let wrapVal k= Input (return (Consumer k))
+    let wrapVal k= Input (yield (Consumer k))
     let (theirList, ourList) = splitAt (finiteBitSize produceInput) $ map wrapVal keyList
-    processOutputs soc [AES fkey] (test theirList ourList) receiveOutputs
+    let wrappedTests = mconcat $ map wrapLiterals $ test theirList ourList
+    keyOutputs <- findHeadValues soc [AES fkey] wrappedTests
+    processOutputs soc keyOutputs wrapConstants
     where
       receiveList :: Int -> IO [Key]
       receiveList num = mapM (const $ SBS.recv soc $ fromIntegral cipherSize) [1..num]
-      receiveOutputs :: Literal -> GenM Bool
-      receiveOutputs (Input x') = do
-        (Consumer x) <- x'
+      wrapConstants :: Either Bool KeyType -> Pipe LBS.ByteString LBS.ByteString IO Bool
+      wrapConstants (Right (Consumer x)) = do
         let k = LBS.fromStrict x
         o0 <- await
         o1 <- await
