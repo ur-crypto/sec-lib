@@ -58,10 +58,7 @@ bigGate ty (Input a) (Input b) =
               yield $ Consumer (BS.pack $ BS.zipWith xor p q)
             _ -> do
               [AES fkey] <- lift ask
-              -- lift . lift $ putStrLn "New Gate"
-              -- lift . lift $ printKey (Just False) p
-              -- lift . lift $ printKey (Just False) q
-              -- lift . lift $ putStrLn ""
+
               x1 <- await
               x2 <- await
               x3 <- await
@@ -69,8 +66,12 @@ bigGate ty (Input a) (Input b) =
 
               let tt = map LBS.toStrict [x1, x2, x3, x4]
               let o = decTruthTable fkey p q tt
-              -- lift . lift $ printKey (Just False) o
-              -- lift . lift $ putStrLn ""
+              lift . lift $ putStrLn "New Gate"
+              lift . lift $ printKey (Just False) p
+              lift . lift $ printKey (Just False) q
+              lift . lift $ putStrLn ""
+              lift . lift $ printKey (Just False) o
+              lift . lift $ putStrLn ""
               yield $ Consumer o
               where
                 decTruthTable fkey k1 k2 [o00, o01, o10, o11] =
@@ -93,26 +94,29 @@ bigGate ty (Input a) (Input b) =
                   o2 = BS.pack $ BS.zipWith xor a0 b1 in do
                   yield $ Producer o1 o2 s
             _ -> do
-              lift . lift $ putStrLn "New Gate"
               [AES fkey, RAND rkey] <- lift ask
               let unsorted = getTT ty (False, True) p q
               let sorted = sortBy order unsorted
-              -- let (p0, p1) = p
-              -- let (q0, q1) = q
-              -- lift . lift $ printKey (Just True) p0
-              -- lift . lift $ printKey (Just True) p1
-              -- lift . lift $ printKey (Just True) q0
-              -- lift . lift $ printKey (Just True) q1
-              -- lift . lift $ putStrLn ""
+
               let o@(o0, o1) = mkKeyPair fkey rkey sorted
               let tt = map (insertKey o) sorted
               let encTruthTable = parMap rdeepseq (enc fkey)
               let list = encTruthTable tt
               let lazyList = fromWriteList writeByteString list
-              -- let (o0, o1) = o
-              -- lift . lift $ printKey (Just True) o0
-              -- lift . lift $ printKey (Just True) o1
-              -- lift . lift $ putStrLn ""
+
+              lift . lift $ putStrLn "New Gate"
+              let (p0, p1) = p
+              let (q0, q1) = q
+              lift . lift $ printKey (Just True) p0
+              lift . lift $ printKey (Just True) p1
+              lift . lift $ printKey (Just True) q0
+              lift . lift $ printKey (Just True) q1
+              lift . lift $ putStrLn ""
+              let (o0, o1) = o
+              lift . lift $ printKey (Just True) o0
+              lift . lift $ printKey (Just True) o1
+              lift . lift $ putStrLn ""
+
               yield $ Producer o0 o1 lazyList
               where
                   getTT AND (o0, o1) = helper o0 o0 o0 o1
