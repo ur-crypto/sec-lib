@@ -100,7 +100,7 @@ bigGate ty (Input a) (Input b) =
 
               let o@(o0, o1) = mkKeyPair fkey rkey sorted
               let tt = map (insertKey o) sorted
-              let encTruthTable = parMap rdeepseq (enc fkey)
+              let encTruthTable = map (enc fkey)
               let list = encTruthTable tt
               let lazyList = fromWriteList writeByteString list
 
