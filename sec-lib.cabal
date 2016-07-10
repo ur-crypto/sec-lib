@@ -46,6 +46,7 @@ library
         deepseq,
         pipes,
         pipes-network,
+        fgl,
         transformers,
         async
     default-language: Haskell2010
