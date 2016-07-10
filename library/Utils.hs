@@ -5,7 +5,7 @@ import           Crypto.Cipher.Types
 import           Crypto.Error
 import           Data.Bits
 import qualified Data.ByteString                as BS
-import qualified Data.ByteString.Lazy           as LBS
+
 import           Data.Int
 import           Data.Word
 import           System.Entropy
@@ -21,7 +21,7 @@ import           Pipes.Lift
 -- import qualified Pipes.Network.TCP              as P
 
 
-processOutputs ::  Socket -> [KeyContext] -> [Literal] -> (Literal -> GenM Bool) -> IO [Bool]
+processOutputs ::  Socket -> [KeyContext] -> [GraphBuilder] -> (GraphBuilder -> GenM Bool) -> IO [Bool]
 processOutputs soc keys values wrapOutputs = do
   let toBool = map wrapOutputs values
   let doReaders = map (runReaderP keys) toBool

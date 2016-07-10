@@ -6,13 +6,16 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 
 module Types where
+import           Control.Monad.State.Strict
 import           Control.Monad.Trans.Reader
 import           Crypto.Cipher.AES
-import           Data.ByteString            as BS
-import           Data.ByteString.Lazy       as LBS
+import           Data.ByteString                   as BS
+import           Data.ByteString.Lazy              as LBS
 import           Network.Socket
 import           Pipes
 import           Text.Bytedump
+
+import           Data.Graph.Inductive.PatriciaTree
 
 type Key = BS.ByteString
 type CTT = TruthTable Key
@@ -21,11 +24,15 @@ type TruthTable a = [a,a,a,a]
 type GenM = Pipe LBS.ByteString LBS.ByteString (ReaderT [KeyContext] IO)
 type SecureNumM = GenM SecureNum
 type KeyM = GenM KeyType
-data Literal = Constant Bool
-              | Input {keym :: KeyM}
-type SecureGate = Literal -> Literal -> Literal
-type SecureNum = [Literal]
+
+type GraphBuilder = State Int SecureGraph
+type SecureGate = GraphBuilder -> GraphBuilder -> GraphBuilder
+type SecureNum = [GraphBuilder]
 type SecureFunction = SecureNum -> SecureNum -> SecureNum
+
+data SecureNode = Gate GateType | Input | Constant Bool deriving (Show)
+
+type SecureGraph = Gr SecureNode ()
 
 type FixedKey = AES128
 
@@ -43,4 +50,4 @@ instance Show KeyType where
 data KeyContext = AES FixedKey
                 | RAND Key
 
-data GateType = AND | OR | XOR deriving (Show)
+data GateType = AND | OR | XOR | NOT deriving (Show)
