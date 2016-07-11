@@ -1,21 +1,26 @@
-{-# LANGUAGE DataKinds            #-}
-{-# LANGUAGE FlexibleInstances    #-}
-{-# LANGUAGE GADTs                #-}
-{-# LANGUAGE RankNTypes           #-}
-{-# LANGUAGE TypeFamilies         #-}
-{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE DataKinds                  #-}
+{-# LANGUAGE DeriveFunctor              #-}
+{-# LANGUAGE FlexibleInstances          #-}
+{-# LANGUAGE GADTs                      #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE RankNTypes                 #-}
+{-# LANGUAGE TypeFamilies               #-}
+{-# LANGUAGE TypeSynonymInstances       #-}
 
-module Types where
-import           Control.Monad.State.Strict
+module Types
+  ( module Types
+  , module SecureGraphs
+  ) where
+
 import           Control.Monad.Trans.Reader
 import           Crypto.Cipher.AES
-import           Data.ByteString                   as BS
-import           Data.ByteString.Lazy              as LBS
+import           Data.ByteString            as BS
+import           Data.ByteString.Lazy       as LBS
 import           Network.Socket
 import           Pipes
 import           Text.Bytedump
 
-import           Data.Graph.Inductive.PatriciaTree
+import           SecureGraphs
 
 type Key = BS.ByteString
 type CTT = TruthTable Key
@@ -24,15 +29,6 @@ type TruthTable a = [a,a,a,a]
 type GenM = Pipe LBS.ByteString LBS.ByteString (ReaderT [KeyContext] IO)
 type SecureNumM = GenM SecureNum
 type KeyM = GenM KeyType
-
-type GraphBuilder = State Int SecureGraph
-type SecureGate = GraphBuilder -> GraphBuilder -> GraphBuilder
-type SecureNum = [GraphBuilder]
-type SecureFunction = SecureNum -> SecureNum -> SecureNum
-
-data SecureNode = Gate GateType | Input | Constant Bool deriving (Show)
-
-type SecureGraph = Gr SecureNode ()
 
 type FixedKey = AES128
 
@@ -50,4 +46,3 @@ instance Show KeyType where
 data KeyContext = AES FixedKey
                 | RAND Key
 
-data GateType = AND | OR | XOR | NOT deriving (Show)

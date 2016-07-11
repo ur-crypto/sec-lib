@@ -1,32 +1,11 @@
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE RankNTypes           #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 module Ops where
 import           Data.Bits
-import           Gate
 import           Prelude                    hiding (not, (&&), (||))
 import           Types
 import           Utils
-
-import           Control.Monad.State.Strict
-
-import           Data.Graph.Inductive.Graph
-
---Gate Macros
-
-(&&) :: SecureGate
-(&&) = andGate
-(||) :: SecureGate
-(||) = orGate
-bXor :: SecureGate
-bXor = xorGate
-nand :: SecureGate
-nand a b = notGate $ andGate a b
-bij :: SecureGate
-bij a b = notGate $ xorGate a b
-not :: GraphBuilder -> GraphBuilder
-not = notGate
 
 --Bit macros
 (.~&.) :: SecureFunction
@@ -35,7 +14,7 @@ not = notGate
 (<.) :: SecureFunction
 (<.) as bs = [imp as bs]
     where
-    imp :: SecureNum -> SecureNum -> GraphBuilder
+    imp :: SecureNum -> SecureNum -> SecureGraphBuilder
     imp [n1] [n2] =
            let nbool = not n2 in
            n1 && nbool
@@ -51,7 +30,7 @@ not = notGate
 (/=.) a b = complement (a ==. b)
 
 --If Then Else Macro
-ifThenElse :: GraphBuilder -> GraphBuilder -> GraphBuilder -> GraphBuilder
+ifThenElse :: SecureGraphBuilder -> SecureGraphBuilder -> SecureGraphBuilder -> SecureGraphBuilder
 ifThenElse bool tb fb =
     let nbool = not bool in
     (bXor (bool && tb) (nbool && fb))
@@ -60,25 +39,21 @@ if' :: SecureNum -> SecureNum -> SecureNum -> SecureNum
 if' bools= zipWith (ifThenElse (foldl1 (||) bools))
 
 
-genConstant :: (MonadState Node m, DynGraph gr) => Bool -> m (gr SecureNode b)
-genConstant bool = do
-  number <- get
-  return $ insNode (number, Constant bool) empty
 
 num2Const :: FiniteBits a => a -> SecureNum
 num2Const n =
-  map genConstant (bits2Bools n)
+  map wrapConstant (bits2Bools n)
 
 extendBy :: Int -> SecureNum -> SecureNum
-extendBy n x = (map (const $ genConstant False) [0..n-1]) ++ x
+extendBy n x = (map (const $ wrapConstant False) [0..n-1]) ++ x
 
 
 --add def
-addInt :: [GraphBuilder] -> [GraphBuilder] -> [GraphBuilder]
+addInt :: [SecureGraphBuilder] -> [SecureGraphBuilder] -> [SecureGraphBuilder]
 addInt m n = let (_,(_,subTotal)) =  addIntFP (length m) m n in
                            subTotal
 
-addIntFP :: Int -> [GraphBuilder] -> [GraphBuilder] -> (Int, (GraphBuilder, [GraphBuilder]))
+addIntFP :: Int -> [SecureGraphBuilder] -> [SecureGraphBuilder] -> (Int, (SecureGraphBuilder, [SecureGraphBuilder]))
 addIntFP _ [n1] [n2] = (1,(n1 && n2,((bXor n1 n2):[])))
 addIntFP p (n1:n1s) (n2:n2s) =
   let m1 = 1+(length n1s)
@@ -100,7 +75,7 @@ addIntFP p (n1:n1s) (n2:n2s) =
                                          (len+1,((carry && n2),((bXor n2 carry):[])++resltsum))
 addIntFP _ _ _ = error "unbalanced inputs"
 
-subCompute :: [GraphBuilder] -> [GraphBuilder] -> (Int, (GraphBuilder, [GraphBuilder]))
+subCompute :: [SecureGraphBuilder] -> [SecureGraphBuilder] -> (Int, (SecureGraphBuilder, [SecureGraphBuilder]))
 subCompute [p1] [g1]  = (1,(g1,p1:[]))
 subCompute (p1:p1s) (g1:g1s) =
       let (len,(carry,prevcarry)) = subCompute p1s g1s in
