@@ -5,6 +5,8 @@ module SecureGraphs where
 
 import           Prelude                           hiding (not, (&&), (||))
 
+import Data.List
+
 import qualified Data.Graph.Inductive.Graph        as G
 
 import           Control.Monad.State.Strict
@@ -13,35 +15,64 @@ import           Data.Graph.Inductive.PatriciaTree
 
 import           Data.Bits
 
-data GateType = AND | OR | XOR | NOT deriving (Show)
-data SecureNode = Gate GateType | Input | Constant Bool deriving (Show)
+data GateType = AND | OR | XOR | NOT deriving (Show, Eq)
+data SecureNode = Gate GateType | Input | Constant Bool deriving (Show, Eq)
 type SecureGraph = Gr SecureNode ()
-type SecureGraphBuilder = State Int SecureGraph
+type SecureGraphBuilder = (State SecureGraph Int)
 type SecureGate = SecureGraphBuilder -> SecureGraphBuilder -> SecureGraphBuilder
 type SecureNum = [SecureGraphBuilder]
 type SecureFunction = SecureNum -> SecureNum -> SecureNum
 
-instance Monoid SecureGraph where
-  mempty = G.empty
-  mappend graphA graphB =
-    let bNodes = labNodes graphB
-        bEdges = labEdges graphB in
-      insEdges bEdges $ insNodes bNodes graphA
+isGate :: GateType -> SecureGraph -> Int -> Bool
+isGate ty graph num =
+  let mContext = fst $ match num graph in
+    maybe False (\x -> Gate ty == lab' x) mContext
 
-instance Monoid SecureGraphBuilder where
-  mempty = return G.empty
-  mappend aGraphM bGraphM = do
-    number <- get
-    let (aGraph, aNum) = runState aGraphM number
-        (bGraph, bNum) = runState bGraphM aNum
-    put $ bNum + 1
-    return $ mappend aGraph bGraph
+bigGate :: GateType -> SecureGate
+bigGate ty leftM rightM = do
+  enterGraph <- get
+  let (leftTip, leftGraph) = runState leftM enterGraph
+      (rightTip, currentGraph) = runState rightM leftGraph
+      leftSucc = suc currentGraph leftTip
+      rightSucc = suc currentGraph rightTip
+      avail = head $ newNodes 1 currentGraph
+      maybeNode = find (isGate ty currentGraph) $ union leftSucc rightSucc
+  case maybeNode of
+    Just x -> do
+      put currentGraph
+      return x
+    Nothing -> do
+      put $ insEdge (rightTip, avail, ()) $
+        insEdge (leftTip, avail, ()) $
+        insNode (avail, Gate ty) currentGraph
+      return avail
 
-wrapNode :: SecureNode ->  SecureGraphBuilder
-wrapNode a = do
-  number <- get
-  put $ number + 1
-  return $ G.insNode (number, a) G.empty
+notGate :: SecureGraphBuilder -> SecureGraphBuilder
+notGate m = do
+  enterGraph <- get
+  let (currentTip, currentGraph) = runState m enterGraph
+      tipGates = suc currentGraph currentTip
+      maybeNode = find (isGate NOT currentGraph) tipGates
+      avail = head $ newNodes 1 currentGraph
+  case maybeNode of
+    Just c -> do
+      put currentGraph
+      return c
+    Nothing -> do
+      put $ insEdge (currentTip, avail, ()) $
+        insNode(avail, Gate NOT) currentGraph
+      return avail
+
+buildGraph :: SecureGraphBuilder -> SecureGraph -> SecureGraph
+buildGraph = execState
+
+wrapNode :: SecureNode -> SecureGraphBuilder
+wrapNode n = do
+  enterGraph <- get
+  let avail = head $ newNodes 1 enterGraph
+  put $ insNode (avail, n) enterGraph
+  return avail
+
 
 wrapConstant :: Bool -> SecureGraphBuilder
 wrapConstant = wrapNode . Constant
@@ -49,31 +80,17 @@ wrapConstant = wrapNode . Constant
 gInput :: SecureGraphBuilder
 gInput = wrapNode Input
 
-bigGate :: GateType -> SecureGate
-bigGate ty leftM rightM = do
-  currentNumber <- get
-  let (leftGraph, leftNum) = runState leftM currentNumber
-      (rightGraph, rightNum) = runState rightM leftNum
-      newNode = rightNum
-  put $ newNode + 1
-  return $
-    insEdge (leftNum - 1 , newNode, ()) $
-    insEdge (rightNum - 1 , newNode, ()) $
-    insNode (newNode, Gate ty) $
-    mappend leftGraph rightGraph
+inputsGraph :: Int -> SecureGraph
+inputsGraph num = foldr (\n g -> G.insNode (n, Input) g) G.empty [1 .. num]
 
-notGate :: SecureGraphBuilder -> SecureGraphBuilder
-notGate m = do
-  currentNumber <- get
-  let (graph, lastNumber) = runState m currentNumber
-  put $ lastNumber + 1
-  return $
-    insEdge(lastNumber - 1, lastNumber, ()) $
-    insNode (lastNumber , Gate NOT) graph
+inputs :: Int -> SecureNum
+inputs num = map return [1 .. num]
 
-buildGraph :: SecureGraphBuilder -> SecureGraph
-buildGraph builder = evalState builder 0
+secure32 :: ((SecureNum, SecureNum), SecureGraph)
+secure32 = ((splitAt 32 $ inputs 64), inputsGraph 64)
 
+-- numberInputs :: SecureNum -> Int
+-- numberInputs = foldr (\graph n -> (+) n $ G.noNodes $ G.labnfilter (\x -> Input == snd x) (buildGraph graph)) 0
 
 andGate :: SecureGate
 andGate = bigGate AND
@@ -106,10 +123,10 @@ instance Bits SecureNum where
     (.|.) = zipWith orGate
     xor = zipWith xorGate
     complement = map notGate
-    shiftL xs num =  drop num xs ++
-      map ( const $ wrapNode $ Constant False) [0 .. num  -1]
-    shiftR xs num =  map ( const $ wrapNode $ Constant  False)
-      [0 .. num  -1]  ++  take num xs
+    -- shiftL xs num =  drop num xs ++
+    --   map ( const $ wrapNode $ Constant False) [0 .. num  -1]
+    -- shiftR xs num =  map ( const $ wrapNode $ Constant  False)
+    --   [0 .. num  -1]  ++  take num xs
     rotate =  undefined
     -- rotate x st =  take ( length st)  $  drop ( negate x ` mod`  length st)  $  cycle st
     isSigned _ =  False
@@ -119,8 +136,11 @@ instance Bits SecureNum where
     bitSize =  length
     bitSizeMaybe a =  Just $  length a
 
-instance Show SecureGraphBuilder where
-  show = show . buildGraph
+-- instance Show SecureGraphBuilder where
+--   show = show . buildGraph
 
-printFullGraph :: [SecureGraphBuilder] -> IO ()
-printFullGraph = prettyPrint . buildGraph . mconcat 
+-- printFullGraph :: [SecureGraphBuilder] -> IO ()
+-- printFullGraph = mapM_ $ prettyPrint . buildGraph
+
+printGraph :: SecureGraph -> IO()
+printGraph = prettyPrint
