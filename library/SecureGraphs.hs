@@ -4,16 +4,14 @@
 module SecureGraphs where
 
 import           Prelude                           hiding (not, (&&), (||))
-
-import Data.List
+import           Data.List
+import           Data.Bits
 
 import qualified Data.Graph.Inductive.Graph        as G
-
-import           Control.Monad.State.Strict
 import           Data.Graph.Inductive.Graph
 import           Data.Graph.Inductive.PatriciaTree
 
-import           Data.Bits
+import           Control.Monad.State.Strict
 
 data GateType = AND | OR | XOR | NOT deriving (Show, Eq)
 data SecureNode = Gate GateType | Input | Constant Bool deriving (Show, Eq)
@@ -73,24 +71,25 @@ wrapNode n = do
   put $ insNode (avail, n) enterGraph
   return avail
 
-
 wrapConstant :: Bool -> SecureGraphBuilder
 wrapConstant = wrapNode . Constant
 
-gInput :: SecureGraphBuilder
-gInput = wrapNode Input
+generateInputs :: Int -> (SecureNum, SecureGraph)
+generateInputs numberInputs = (inputs, inputsGraph)
+  where
+    inputs = map return [1 .. numberInputs]
+    inputsGraph = foldr (\n g -> G.insNode (n, Input) g) G.empty [1 .. numberInputs]
 
-inputsGraph :: Int -> SecureGraph
-inputsGraph num = foldr (\n g -> G.insNode (n, Input) g) G.empty [1 .. num]
+secure32 :: (SecureNum, SecureGraph)
+secure32 = generateInputs 32
 
-inputs :: Int -> SecureNum
-inputs num = map return [1 .. num]
-
-secure32 :: ((SecureNum, SecureNum), SecureGraph)
-secure32 = ((splitAt 32 $ inputs 64), inputsGraph 64)
-
--- numberInputs :: SecureNum -> Int
--- numberInputs = foldr (\graph n -> (+) n $ G.noNodes $ G.labnfilter (\x -> Input == snd x) (buildGraph graph)) 0
+createProgramCircuit :: SecureFunction -> Int -> Int -> SecureGraph
+createProgramCircuit func numberInputsA numberInputsB =
+    let inputSize = numberInputsA + numberInputsB
+        (startBuilders, startGraph) = generateInputs inputSize
+        (aBuilders, bBuilders) = splitAt (finiteBitSize numberInputsA) startBuilders
+        builderResults = func aBuilders bBuilders in
+      foldl (flip execState) startGraph builderResults
 
 andGate :: SecureGate
 andGate = bigGate AND
@@ -123,10 +122,10 @@ instance Bits SecureNum where
     (.|.) = zipWith orGate
     xor = zipWith xorGate
     complement = map notGate
-    -- shiftL xs num =  drop num xs ++
-    --   map ( const $ wrapNode $ Constant False) [0 .. num  -1]
-    -- shiftR xs num =  map ( const $ wrapNode $ Constant  False)
-    --   [0 .. num  -1]  ++  take num xs
+    shiftL xs num =  drop num xs ++
+      map ( const $ wrapConstant False) [0 .. num  -1]
+    shiftR xs num =  map ( const $ wrapConstant False)
+      [0 .. num  -1]  ++  take num xs
     rotate =  undefined
     -- rotate x st =  take ( length st)  $  drop ( negate x ` mod`  length st)  $  cycle st
     isSigned _ =  False
@@ -135,12 +134,6 @@ instance Bits SecureNum where
     popCount =  undefined
     bitSize =  length
     bitSizeMaybe a =  Just $  length a
-
--- instance Show SecureGraphBuilder where
---   show = show . buildGraph
-
--- printFullGraph :: [SecureGraphBuilder] -> IO ()
--- printFullGraph = mapM_ $ prettyPrint . buildGraph
 
 printGraph :: SecureGraph -> IO()
 printGraph = prettyPrint

@@ -34,9 +34,6 @@ bitZero = wrapNode $ Constant False
 bitOne :: SecureGraphBuilder
 bitOne = wrapNode $ Constant True
 
-secureNumber :: Int -> [SecureGraphBuilder]
-secureNumber n = map (const gInput) [1 .. n]
-
 --Parameters
 cipherSize :: Int64
 cipherSize = 16
