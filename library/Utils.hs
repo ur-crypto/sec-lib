@@ -11,7 +11,7 @@ import           Data.Int
 import           Data.Word
 import           System.Entropy
 import           Text.Bytedump
-import           Types                          hiding (not, (&&), (||))
+import           Types
 
 import           Network.Socket
 import qualified Network.Socket.ByteString.Lazy as LSBS
@@ -29,10 +29,10 @@ processOutputs soc keys values wrapOutputs = do
 
 --Generation Functions
 bitZero :: SecureGraphBuilder
-bitZero = wrapNode $ Constant False
+bitZero = wrapConstant False
 
 bitOne :: SecureGraphBuilder
-bitOne = wrapNode $ Constant True
+bitOne = wrapConstant True
 
 --Parameters
 cipherSize :: Int64

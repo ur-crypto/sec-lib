@@ -48,6 +48,7 @@ doWithSocket :: FiniteBits a => Socket -> (a, a) -> SecureFunction -> IO [Bool]
 doWithSocket soc (inputProduce, inputConsume) test = do
     let (a, b) = (finiteBitSize inputProduce, finiteBitSize inputConsume)
     let functionCircuit = createProgramCircuit test a b
+
     rkey <- genRootKey
     fkeystr <- genFixedKey
     let fkey = initFixedKey fkeystr

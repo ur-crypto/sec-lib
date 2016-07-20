@@ -26,7 +26,6 @@ library
         Examples
         TestUtils
         Ops
-        Gate
         Counter
     build-depends:
                   array,
@@ -44,6 +43,7 @@ library
                   parallel,
                   pipes,
                   pipes-network,
+                  pipes-concurrency,
                   random,
                   split,
                   transformers,

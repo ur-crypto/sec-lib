@@ -238,7 +238,7 @@ uexor (n1:n1s) (n2:n2s) = let reslt = uexor n1s n2s in
 
 hammingWt :: Int -> [Literal] -> (Int, [Literal])
 hammingWt p n =
-    case (p>2,p>1) of
+    case (p>2, p>1) of
          (True,_)        -> let (leftThird,rightHalf) = splitAt (quot p 3) n in
                              let (midThird,rightThird) = splitAt (quot p 3) rightHalf in
                                   let (lenleft,subleft) = hammingWt (quot p 3) leftThird
@@ -273,7 +273,7 @@ levenshtein2 sa sb = last $ foldl' transform (map O.num2Const [0..fromIntegral (
             where
                 compute z (c', x, y) = foldl1' cmp [y+(O.num2Const (1 :: Int8)), z+(O.num2Const (1 :: Int8)), x + [O.bXor c' c]]
                     where
-                        cmp a b = a .&. b
+                        cmp a b = a <. b
 
 
 -- --edistance :: Eq a => [a] -> [a] -> Int
