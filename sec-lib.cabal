@@ -21,12 +21,13 @@ library
     exposed-modules:
         Producer
         Consumer
-        Utils
         Types
-        Examples
         TestUtils
         Ops
-        Counter
+    other-modules:       SecureComputation
+                         SecureGraphs
+                         SecureNumbers
+                         Utils
     build-depends:
                   array,
                   async,

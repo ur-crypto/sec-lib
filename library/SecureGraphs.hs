@@ -1,19 +1,39 @@
 {-# LANGUAGE FlexibleContexts     #-}
 {-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE NamedFieldPuns       #-}
 {-# LANGUAGE TypeSynonymInstances #-}
-module SecureGraphs where
+module SecureGraphs (bigGate
+                    , SecureGraph
+                    , SecureGate
+                    , createProgramCircuit
+                    , SecureNum
+                    , SecureFunction
+                    , GateType(..)
+                    , SecureGraphBuilder
+                    , ComputableGraph(..)
+                    , SecureNode(..)
+                    , andGate
+                    , orGate
+                    , xorGate
+                    , notGate
+                    , wrapConstant
+                    , module Data.Graph.Inductive.Query.DFS
+                    ) where
 
-import           Data.List
 import           Data.Bits
+import           Data.List
 
-import qualified Data.Graph.Inductive.Graph        as G
+
 import           Data.Graph.Inductive.Graph
+import qualified Data.Graph.Inductive.Graph        as G
 import           Data.Graph.Inductive.PatriciaTree
+import           Data.Graph.Inductive.Query.DFS
 
-import           Control.Monad.State.Strict
+import           Control.Monad.State.Lazy
 
 data GateType = AND | OR | XOR | NOT deriving (Show, Eq)
 data SecureNode = Gate GateType | Input | Const Bool deriving (Show, Eq)
+data ComputableGraph = ComputableGraph{graphNodes :: [Node], graph :: SecureGraph}
 type SecureGraph = Gr SecureNode ()
 data SecureGraphBuilder = Builder (State SecureGraph Int) | Constant Bool
 type SecureGate = SecureGraphBuilder -> SecureGraphBuilder -> SecureGraphBuilder
@@ -25,13 +45,13 @@ isGate ty graph num =
   let mContext = fst $ match num graph in
     maybe False (\x -> Gate ty == lab' x) mContext
 
-
 bigGate :: GateType -> SecureGate
 bigGate ty (Constant a) (Constant b) =
   Constant $ case ty of
     AND -> a && b
     OR -> a || b
     XOR -> if a then not b else b
+    NOT -> error "should never happen"
 bigGate ty c'@(Constant _) b'@(Builder _) = bigGate ty b' c'
 bigGate ty b'@(Builder _) c'@(Constant c) =
   case ty of
@@ -74,13 +94,6 @@ notGate (Builder m) = Builder $ do
         insNode(avail, Gate NOT) currentGraph
       return avail
 
-wrapNode :: SecureNode -> SecureGraphBuilder
-wrapNode n = Builder $ do
-  enterGraph <- get
-  let avail = head $ newNodes 1 enterGraph
-  put $ insNode (avail, n) enterGraph
-  return avail
-
 wrapConstant :: Bool -> SecureGraphBuilder
 wrapConstant = Constant
 
@@ -90,22 +103,23 @@ generateInputs numberInputs = (inputs, inputsGraph)
     inputs = map (Builder . return) [1 .. numberInputs]
     inputsGraph = foldr (\n g -> G.insNode (n, Input) g) G.empty [1 .. numberInputs]
 
-secure32 :: (SecureNum, SecureGraph)
-secure32 = generateInputs 32
-
-createProgramCircuit :: SecureFunction -> Int -> Int -> SecureGraph
+createProgramCircuit :: SecureFunction -> Int -> Int -> ComputableGraph
 createProgramCircuit func numberInputsA numberInputsB =
     let inputSize = numberInputsA + numberInputsB
         (startBuilders, startGraph) = generateInputs inputSize
-        (aBuilders, bBuilders) = splitAt (numberInputsA) startBuilders
+        (aBuilders, bBuilders) = splitAt numberInputsA startBuilders
         builderResults = func aBuilders bBuilders in
-      mergeResults startGraph builderResults
+      mergeResults (ComputableGraph [] startGraph) builderResults
 
-mergeResults :: SecureGraph -> SecureNum -> SecureGraph
+mergeResults :: ComputableGraph -> SecureNum -> ComputableGraph
 mergeResults graph [] = graph
-mergeResults graph (Builder result:results) = mergeResults (execState result graph) results
-mergeResults graph (Constant result:results) =
-  mergeResults (G.insNode (head $ newNodes 1 graph, Const result) graph) results
+mergeResults ComputableGraph{graphNodes, graph} (Builder result:results) =
+  let (newNode, newGraph) = runState result graph in
+  mergeResults (ComputableGraph (graphNodes ++ [newNode]) newGraph) results
+mergeResults ComputableGraph{graphNodes, graph} (Constant result:results) =
+  let [node] = newNodes 1 graph
+      newGraph = G.insNode (node, Const result) graph in
+    mergeResults ComputableGraph{graphNodes = graphNodes ++ [node], graph = newGraph} results
 
 andGate :: SecureGate
 andGate = bigGate AND
@@ -138,6 +152,3 @@ instance Bits SecureNum where
     popCount =  undefined
     bitSize =  length
     bitSizeMaybe a =  Just $  length a
-
-printGraph :: SecureGraph -> IO()
-printGraph = prettyPrint

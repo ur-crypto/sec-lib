@@ -1,12 +1,14 @@
 {-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE OverloadedStrings    #-}
 {-# LANGUAGE RankNTypes           #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 module Ops where
 import           Data.Bits
+import Debug.Trace
+import           Data.Int
 import           Data.List
-import Data.Int
 
-import           Prelude                           hiding (not, (&&), (||))
+import           Prelude                    hiding (not, (&&), (||))
 import           Types
 import           Utils
 
@@ -31,13 +33,10 @@ not = notGate
     where
     imp :: SecureNum -> SecureNum -> SecureGraphBuilder
     imp [n1] [n2] =
-           let nbool = not n2 in
-           n1 && nbool
+           n1 && not n2
     imp (n1:n1s) (n2:n2s) =
-           let nbool = not n2
-               mbool = not n1 in
-           ifThenElse ( n1 && nbool) n1 (ifThenElse (mbool && n2) n1 (imp n1s n2s))
-    imp _ _ = error "Bad args for imp"
+           ifThenElse ( n1 && not n2) n1 (ifThenElse (not n1 && n2) n1 (imp n1s n2s))
+    imp n m = error $ "Bad args for imp" ++ show (length n) ++ show (length m)
 
 (==.) :: SecureFunction
 (==.) n1 n2 = [foldl1 (&&) (zipWith bij n1 n2)]
@@ -51,9 +50,7 @@ ifThenElse bool tb fb =
     (bXor (bool && tb) (nbool && fb))
 
 if' :: SecureNum -> SecureNum -> SecureNum -> SecureNum
-if' bools= zipWith (ifThenElse (foldl1 (||) bools))
-
-
+if' bools= trace ("if") $ zipWith (ifThenElse (foldl1 (||) bools))
 
 num2Const :: FiniteBits a => a -> SecureNum
 num2Const n =
@@ -98,7 +95,7 @@ subCompute (p1:p1s) (g1:g1s) =
 subCompute _ _ = error "unbalanced inputs"
 
 instance Num (SecureNum) where
-    (+) = addInt
+    (+) = trace "add" $ addInt
     (*) = undefined
     signum = undefined
     fromInteger = undefined
@@ -109,39 +106,6 @@ levenshtein2 sa sb = last $ foldl' transform (map num2Const [0..fromIntegral (le
     where
         transform xs@(x:xs') c = scanl' compute (x+(num2Const (1 :: Int8))) (zip3 sa xs xs')
             where
-                compute z (c', x, y) = foldl1' cmp [y+(num2Const (1 :: Int8)), z+(num2Const (1 :: Int8)), x + [bXor c' c]]
+                compute z (c', x', y) = foldl1' cmp [y+(num2Const (1 :: Int8)), z+(num2Const (1 :: Int8)), x' + [bXor c' c]]
                     where
-                        cmp a b = a ==. b
-
-ueand (n1:n1s) [] = let reslt = ueand n1s [] in
-                              (((wrapConstant False):[])++reslt)
-ueand [] (n1:n1s) = let reslt = ueand n1s [] in
-                              (((wrapConstant False):[])++reslt)
-ueand [] [] = []
-ueand [n1] [n2] = (n1 && n2):[]
-ueand (n1:n1s) (n2:n2s) = let reslt = ueand n1s n2s in
-                              (((n1 && n2):[])++reslt)
-
-ureand n1 n2 = reverse (ueand (reverse n1) (reverse n2))
-urexor n1 n2 = reverse (uexor (reverse n1) (reverse n2))
-
-uexor (n1:n1s) [] = (n1:n1s)
-uexor [] (n1:n1s) = (n1:n1s)
-uexor [] [] = []
-uexor [n1] [n2] = (bXor n1 n2):[]
-uexor (n1:n1s) (n2:n2s) = let reslt = uexor n1s n2s in
-                              (((bXor n1 n2):[])++reslt)
-hammingWt p n =
-    case (p>2, p>1) of
-         (True,_)        -> let (leftThird,rightHalf) = splitAt (quot p 3) n in
-                             let (midThird,rightThird) = splitAt (quot p 3) rightHalf in
-                                  let (lenleft,subleft) = hammingWt (quot p 3) leftThird
-                                      (lenmid,submid) = hammingWt (quot p 3) midThird
-                                      (lenright,subright) = hammingWt (p-2*(quot p 3)) rightThird in
-                                      let fsummand = (urexor) ((urexor) subleft submid) subright
-                                          ssummand = ((urexor) ((urexor) (ureand subleft submid) (ureand submid  subright)) (ureand subleft subright))++((wrapConstant False):[])
-                                          mx = maximum((lenleft:lenright:lenmid:[])) in
-                                          let (len,(carry,subTotal)) = addIntFP 6 fsummand ssummand in
-                                              (len+1,((carry:[])++subTotal))
-         (False,True)    -> let (fb:[sb]) = n in (2,((fb && sb):((bXor) fb sb):[]))
-         (False,False)   -> (1,n)
+                        cmp a b = if' (a <. b) a b

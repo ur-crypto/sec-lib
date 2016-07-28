@@ -11,28 +11,21 @@ import           Data.Int
 import           Data.Word
 import           System.Entropy
 import           Text.Bytedump
-import           Types
 
-import           Network.Socket
-import qualified Network.Socket.ByteString.Lazy as LSBS
-
-import           Pipes
-import           Pipes.Lift
-
-processOutputs ::  Socket -> [KeyContext] -> [SecureGraphBuilder] -> (SecureGraphBuilder -> GenM Bool) -> IO [Bool]
-processOutputs soc keys values wrapOutputs = do
-  let toBool = map wrapOutputs values
-  let doReaders = map (runReaderP keys) toBool
-  let attachServer = map (\x -> (lift $ LSBS.recv soc (fromIntegral cipherSize)) >~ for x (lift . LSBS.sendAll soc)) doReaders
-  mapM runEffect attachServer
+-- processOutputs ::  Socket -> [KeyContext] -> [SecureGraphBuilder] -> (SecureGraphBuilder -> GenM Bool) -> IO [Bool]
+-- processOutputs soc keys values wrapOutputs = do
+--   let toBool = map wrapOutputs values
+--   let doReaders = map (runReaderP keys) toBool
+--   let attachServer = map (\x -> (lift $ LSBS.recv soc (fromIntegral cipherSize)) >~ for x (lift . LSBS.sendAll soc)) doReaders
+--   mapM runEffect attachServer
 
 
---Generation Functions
-bitZero :: SecureGraphBuilder
-bitZero = wrapConstant False
+-- --Generation Functions
+-- bitZero :: SecureGraphBuilder
+-- bitZero = wrapConstant False
 
-bitOne :: SecureGraphBuilder
-bitOne = wrapConstant True
+-- bitOne :: SecureGraphBuilder
+-- bitOne = wrapConstant True
 
 --Parameters
 cipherSize :: Int64
@@ -86,13 +79,13 @@ getAESKeys a b = (throwCryptoError $ cipherInit a :: AES128, throwCryptoError $ 
 initFixedKey :: BS.ByteString -> AES128
 initFixedKey str = throwCryptoError $ cipherInit str
 
-hash :: AES128 -> Key -> Key
+hash :: AES128 -> BS.ByteString -> BS.ByteString
 hash = ecbEncrypt
 
-hashPair :: AES128 -> Key -> Key -> Key
+hashPair :: AES128 -> BS.ByteString -> BS.ByteString -> BS.ByteString
 hashPair fkey a b = BS.pack $ BS.zipWith xor (hash fkey a) (hash fkey b)
 
-enc :: AES128 -> (Key, Key, Key) -> Key
+enc :: AES128 -> (BS.ByteString, BS.ByteString, BS.ByteString) -> BS.ByteString
 enc fkey (a, b, o) =
     BS.pack $ BS.zipWith xor o $ hashPair fkey a b
 
