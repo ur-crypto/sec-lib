@@ -1,4 +1,6 @@
 dist
+*.#*
+*~*~*
 cabal-dev
 *.o
 *.hi
