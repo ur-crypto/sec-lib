@@ -26,7 +26,6 @@ library
         Ops
     other-modules:       SecureComputation
                          SecureGraphs
-                         SecureNumbers
                          Utils
     build-depends:
                   array,

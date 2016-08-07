@@ -33,6 +33,7 @@ not = notGate
     where
     imp :: SecureNum -> SecureNum -> SecureGraphBuilder
     imp [n1] [n2] =
+      trace "<." $
            n1 && not n2
     imp (n1:n1s) (n2:n2s) =
            ifThenElse ( n1 && not n2) n1 (ifThenElse (not n1 && n2) n1 (imp n1s n2s))
@@ -68,6 +69,7 @@ addInt m n = let (_,(_,subTotal)) =  addIntFP (length m) m n in
 addIntFP :: Int -> [SecureGraphBuilder] -> [SecureGraphBuilder] -> (Int, (SecureGraphBuilder, [SecureGraphBuilder]))
 addIntFP _ [n1] [n2] = (1,(n1 && n2,((bXor n1 n2):[])))
 addIntFP p (n1:n1s) (n2:n2s) =
+  trace "add" $
   let m1 = 1+(length n1s)
       m2 = 1+(length n2s) in
     let cond1 = (m1 > p)
@@ -95,7 +97,7 @@ subCompute (p1:p1s) (g1:g1s) =
 subCompute _ _ = error "unbalanced inputs"
 
 instance Num (SecureNum) where
-    (+) = trace "add" $ addInt
+    (+) = addInt
     (*) = undefined
     signum = undefined
     fromInteger = undefined
@@ -109,3 +111,11 @@ levenshtein2 sa sb = last $ foldl' transform (map num2Const [0..fromIntegral (le
                 compute z (c', x', y) = foldl1' cmp [y+(num2Const (1 :: Int8)), z+(num2Const (1 :: Int8)), x' + [bXor c' c]]
                     where
                         cmp a b = if' (a <. b) a b
+levenshteinBad :: SecureFunction
+levenshteinBad sa sb = last $ foldl' transform (map num2Const [0..fromIntegral (length sa) :: Int8] ) sb
+    where
+        transform xs@(x:xs') c = scanl' compute (x+(num2Const (1 :: Int8))) (zip3 sa xs xs')
+            where
+                compute z (c', x', y) = foldl1' cmp [y+(num2Const (1 :: Int8)), z+(num2Const (1 :: Int8)), x' + [bXor c' c]]
+                    where
+                        cmp a b = if' a a b

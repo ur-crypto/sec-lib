@@ -18,11 +18,12 @@ module SecureGraphs (bigGate
                     , notGate
                     , wrapConstant
                     , module Data.Graph.Inductive.Query.DFS
+                    , module Data.Graph.Inductive.Graph
                     ) where
 
 import           Data.Bits
 import           Data.List
-
+import           Debug.Trace
 
 import           Data.Graph.Inductive.Graph
 import qualified Data.Graph.Inductive.Graph        as G
@@ -60,7 +61,7 @@ bigGate ty b'@(Builder _) c'@(Constant c) =
     XOR -> if c then notGate b' else b'
     NOT -> error "will never happen"
 bigGate ty (Builder leftM) (Builder rightM) = Builder $ do
-  enterGraph <- get
+  enterGraph <- trace (show ty) get
   let (leftTip, leftGraph) = runState leftM enterGraph
       (rightTip, currentGraph) = runState rightM leftGraph
       leftSucc = suc currentGraph leftTip
