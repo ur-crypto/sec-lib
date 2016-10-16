@@ -2,5 +2,14 @@ flags: {}
 extra-package-dbs: []
 packages:
 - '.'
-extra-deps: []
+extra-deps:
+- aeson-0.11.2.1
+- criterion-1.1.0.0
+- equational-reasoning-0.4.1.1
+- ghc-typelits-presburger-0.1.1.0
+- monomorphic-0.0.3.3
+- singletons-2.1
+- sized-vector-1.4.3.1
+- th-desugar-1.6
+- type-natural-0.4.2.0
 resolver: lts-6.9

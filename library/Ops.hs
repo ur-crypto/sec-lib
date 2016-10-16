@@ -1,100 +1,54 @@
+{-# LANGUAGE DataKinds            #-}
 {-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE InstanceSigs         #-}
 {-# LANGUAGE RankNTypes           #-}
+{-# LANGUAGE TypeOperators        #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 module Ops where
-import           Data.Bits
-import           Gate
-import           NotGate
-import           Prelude   hiding (not, (&&), (||))
+import           Data.Singletons
+import           Data.Singletons.Prelude.Num
+import           Data.Type.Natural           (Nat (..))
+import qualified Data.Vector.Sized           as S
+import           Prelude                     hiding (not, (&&), (/=), (==),
+                                              (||))
+import qualified Prelude                     as P
 import           Types
-import           Utils
 
 --Gate Macros
 
-(&&) :: SecureGate
-(&&) = andGate
-(||) :: SecureGate
-(||) = orGate
-bXor :: SecureGate
-bXor = xorGate
-nand :: SecureGate
-nand a b = notGate $ andGate a b
-bij :: SecureGate
-bij a b = notGate $ xorGate a b
-not :: Literal -> Literal
-not = notGate
+class Boolean a where
+  not :: a -> a
+  (&&) :: a -> a -> a
+  (||) :: a -> a -> a
 
---Bit macros
-(.~&.) :: SecureFunction
-(.~&.) = zipWith nand
+  (/=) :: a -> a -> a
+  (/=) a b = (not a && b) || (a && not b)
+  xor :: a -> a -> a
+  xor = (/=)
+  (==) :: a -> a -> a
+  a == b = not (a /= b)
+  if' :: a -> a -> a -> a
+  if' a b c = (a && b) || (not a && c)
 
-(<.) :: SecureFunction
-(<.) as bs = [imp as bs]
-    where
-    imp :: SecureNum -> SecureNum -> Literal
-    imp [n1] [n2] =
-           let nbool = not n2 in
-           n1 && nbool
-    imp (n1:n1s) (n2:n2s) =
-           let nbool = not n2
-               mbool = not n1 in
-           ifThenElse ( n1 && nbool) n1 (ifThenElse (mbool && n2) n1 (imp n1s n2s))
-    imp _ _ = error "Bad args for imp"
+instance Boolean P.Bool where
+  not = P.not
+  (&&) = (P.&&)
+  (||) = (P.||)
+  (==) = (P.==)
+  (/=) = (P./=)
 
-(==.) :: SecureFunction
-(==.) n1 n2 = [foldl1 (&&) (zipWith bij n1 n2)]
-(/=.) :: SecureFunction
-(/=.) a b = complement (a ==. b)
+instance Boolean (SecureBit a) where
+  not = Not
+  (&&) = And
+  (||) = Or
+  (/=) = Xor
 
---If Then Else Macro
-ifThenElse :: Literal -> Literal -> Literal -> Literal
-ifThenElse bool tb fb =
-    let nbool = not bool in
-    (bXor (bool && tb) (nbool && fb))
+extend :: forall a n m. SingI m => SecureBit a -> SecureNum a n -> SecureNum a (m :+ n)
+extend signBit vec = S.append vec (S.replicate' signBit)
 
-if' :: SecureNum -> SecureNum -> SecureNum -> SecureNum
-if' bools= zipWith (ifThenElse (foldl1 (||) bools))
-
-num2Const :: FiniteBits a => a -> SecureNum
-num2Const n = map Constant (bits2Bools n)
-
-extendBy :: Int -> SecureNum -> SecureNum
-extendBy n x = (map (\_->Constant False) [0..n-1]) ++ x
-
-
---add def
-addInt :: [Literal] -> [Literal] -> [Literal]
-addInt m n = let (_,(_,subTotal)) =  addIntFP (length m) m n in
-                           subTotal
-
-addIntFP :: Int -> [Literal] -> [Literal] -> (Int, (Literal, [Literal]))
-addIntFP _ [n1] [n2] = (1,(n1 && n2,((bXor n1 n2):[])))
-addIntFP p (n1:n1s) (n2:n2s) =
-  let m1 = 1+(length n1s)
-      m2 = 1+(length n2s) in
-    let cond1 = (m1 > p)
-        cond2 = (m2 > p)
-        cond3 = (m1 > m2)
-        cond4 = (m1 < m2) in
-         case (cond1,cond2,cond3,cond4) of
-          (True,True,_,_)             -> addIntFP p n1s n2s
-          (True,False,_,_)            -> addIntFP p n1s (n2:n2s)
-          (False,True,_,_)            -> addIntFP p (n1:n1s) n2s
-          (False,False,False,False)   -> let generate = (n1:n1s) .&. (n2:n2s)
-                                             propogate = xor (n1:n1s) (n2:n2s) in
-                                             subCompute propogate generate
-          (False,False,True,_)        -> let (len,(carry,resltsum)) = addIntFP p n1s (n2:n2s) in
-                                         (len+1,((carry && n1),((bXor n1 carry):[])++resltsum))
-          (False,False,False,True)    -> let (len,(carry,resltsum)) = addIntFP p (n1:n1s) n2s in
-                                         (len+1,((carry && n2),((bXor n2 carry):[])++resltsum))
-addIntFP _ _ _ = error "unbalanced inputs"
-
-subCompute :: [Literal] -> [Literal] -> (Int, (Literal, [Literal]))
-subCompute [p1] [g1]  = (1,(g1,p1:[]))
-subCompute (p1:p1s) (g1:g1s) =
-      let (len,(carry,prevcarry)) = subCompute p1s g1s in
-          (len+1,((bXor g1 (carry && p1)),(((bXor p1 carry):[])++prevcarry)))
-subCompute _ _ = error "unbalanced inputs"
-
-instance Num (SecureNum) where
-    (+) = addInt
+instance Boolean (SecureNum a ('S n)) where
+  not :: (SecureNum a ('S n)) -> SecureNum a ('S n)
+  not vec =
+    S.append (S.singleton $ not (S.foldl1 (||) vec)) $
+    S.map (const $ SecureConstant False) $ S.tail vec
+  (&&) a b = _
