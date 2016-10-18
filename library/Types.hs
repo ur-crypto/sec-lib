@@ -9,14 +9,17 @@ module Types where
 import           Control.Monad.RWS.Strict
 import           Crypto.Cipher.AES
 import           Data.ByteString          as BS
+import           Data.LargeWord
 import           Data.Map.Strict
 import           Data.Vector.Sized
 
-data PKey = PKey ByteString ByteString
-data CKey = CKey ByteString
+type Key = Word128
+
+data PKey = PKey Key Key
+data CKey = CKey Key
 
 newtype FixedKey = FixedKey AES128
-newtype RandKey = RandKey BS.ByteString
+newtype RandKey = RandKey Key
 
 data Counter = Counter {andCount :: !Int, orCount :: !Int, xorCount :: !Int, notCount :: !Int}
 
