@@ -1,38 +1,50 @@
 {-# LANGUAGE DataKinds            #-}
 {-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE GADTs                #-}
+{-# LANGUAGE NamedFieldPuns       #-}
 {-# LANGUAGE RankNTypes           #-}
 {-# LANGUAGE TypeFamilies         #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 
 module Types where
 import           Control.Monad.RWS.Strict
+import           Control.Monad.State.Strict
 import           Crypto.Cipher.AES
-import           Data.ByteString          as BS
+import           Data.ByteString            as BS
 import           Data.LargeWord
 import           Data.Map.Strict
-import           Data.Vector.Sized
+import GHC.TypeLits
 
-type Key = Word128
+type RealKey = Word128
 
-data PKey = PKey Key Key
-data CKey = CKey Key
+type KeyId = Int
 
-newtype FixedKey = FixedKey AES128
-newtype RandKey = RandKey Key
+data Key a where
+  PKey :: (RealKey, RealKey) -> Key (RealKey, RealKey)
+  CKey :: RealKey -> Key RealKey
+  BKey :: Bool -> Key a
 
-data Counter = Counter {andCount :: !Int, orCount :: !Int, xorCount :: !Int, notCount :: !Int}
+newtype FixedKey = FixedKey {fKeyAES :: AES128}
+newtype RandKey = RandKey {randKey :: RealKey}
 
-data KeyCache a = KeyCache (Map (SecureBit a) a)
+data KeyMakerContext a where
+  ConsumerContext :: FixedKey -> RandKey -> KeyMakerContext (RealKey, RealKey)
+  ProducerContext :: RandKey -> KeyMakerContext RealKey
 
-data SecureBit a where
-  Not :: SecureBit a -> SecureBit a
-  And :: SecureBit a -> SecureBit a -> SecureBit a
-  Or :: SecureBit a -> SecureBit a -> SecureBit a
-  Xor :: SecureBit a -> SecureBit a -> SecureBit a
-  SecureConstant :: Bool -> SecureBit b
-  SecureProducer :: ((RWST (FixedKey, BS.ByteString) () (KeyCache PKey) IO) PKey) -> SecureBit PKey
-  SecureConsumer :: ((RWST (FixedKey, BS.ByteString) () (KeyCache CKey) IO) CKey) -> SecureBit CKey
-  SecureCounter :: Counter -> SecureBit Counter
+data SecureGate a n where
+  Not :: Key a -> SecureGate a 1
+  And :: Key a -> Key a -> SecureGate a 2
+  Or :: Key a -> Key a -> SecureGate a 2
+  Xor :: Key a -> Key a -> SecureGate a 2
 
-type SecureNum a n = Vector (SecureBit a) n
+type SecureBit a = (StateT (Map KeyId (Key a)) IO (Key a))
+
+type SecureNum a = [SecureBit a]
+
+class KeyMaker a where
+  make :: KeyMakerContext a -> SecureGate a n -> ByteString -> (Key a, ByteString)
+
+instance KeyMaker (RealKey, RealKey) where
+  make context gate input = _
+    where
+      ConsumerContext FixedKey{fKeyAES} RandKey{randKey} = context

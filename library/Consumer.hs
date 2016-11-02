@@ -15,21 +15,6 @@ import           Types
 import           Utils
 
 
-type CKey = Key
-
-decTruthTable :: FixedKey -> Key -> Key -> [Key] -> Key
-decTruthTable fkey k1 k2 [o00, o01, o10, o11] =
-  let k1' = BS.last k1
-      k2' = BS.last k2 in
-  let o = case (k1', k2') of
-        (0, 0) -> o00
-        (0, 1) -> o01
-        (1, 0) -> o10
-        (1, 1) -> o11
-        _ -> error $ "Improper decoding of: " ++ show k1' ++ ", " ++ show k2'
-        in
-  enc fkey (k1, k2, o)
-
 getSocket :: IO Socket
 getSocket = do
     addrinfos <- getAddrInfo (Just (defaultHints {addrFlags = [AI_PASSIVE]})) Nothing (Just "3000")

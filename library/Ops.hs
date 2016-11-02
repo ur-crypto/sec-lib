@@ -5,13 +5,10 @@
 {-# LANGUAGE TypeOperators        #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 module Ops where
-import           Data.Type.Natural           (Nat (..))
-import qualified Data.Vector.Sized           as S
 import           Prelude                     hiding (not, (&&), (/=), (==),
                                               (||))
 import qualified Prelude                     as P
 import           Types
-
 class Boolean a where
   not :: a -> a
   (&&) :: a -> a -> a
@@ -33,16 +30,20 @@ instance Boolean P.Bool where
   (==) = (P.==)
   (/=) = (P./=)
 
-instance Boolean (SecureBit a) where
-  not = Not
-  (&&) = And
-  (||) = Or
-  (/=) = Xor
+-- instance Boolean (SecureBit a) where
+--   not = evalGate . Not
+--   a && b = evalGate $ And a b
+--   a || b = evalGate $ Or a b
+--   a /= b = evalGate $ Xor a b
 
-instance Boolean (SecureNum a ('S n)) where
-  not :: (SecureNum a ('S n)) -> SecureNum a ('S n)
-  not vec =
-    S.append (S.singleton $ not (S.foldl1 (||) vec)) $
-    S.map (const $ SecureConstant False) $ S.tail vec
-  (&&) a b = S.append (S.singleton $ (S.head $ not $ not a) && (S.head $ not $ not b)) (S.tail a)
-  (||) a b = S.append (S.singleton $ (S.head $ not $ not a) || (S.head $ not $ not b)) (S.tail a)
+wrapBool :: forall a. Bool -> SecureBit a
+wrapBool = return . BKey
+
+extendToLength :: Int -> SecureNum a -> SecureNum a
+extendToLength n num = num ++ map (const $ wrapBool False) [0 .. n - length num]
+
+-- instance Boolean (SecureNum a) where
+--   not list = extendToLength (length list) [foldl1 (||) list]
+--   (&&) a b = zipWith (&&) (not $ not a) (not $ not b)
+--   (||) a b = zipWith (||) (not $ not a) (not $ not b)
+
