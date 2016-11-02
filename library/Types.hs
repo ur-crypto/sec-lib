@@ -13,7 +13,8 @@ import           Crypto.Cipher.AES
 import           Data.ByteString            as BS
 import           Data.LargeWord
 import           Data.Map.Strict
-import GHC.TypeLits
+import           Data.Type.Natural
+import           Data.Vector.Sized
 
 type RealKey = Word128
 
@@ -28,14 +29,16 @@ newtype FixedKey = FixedKey {fKeyAES :: AES128}
 newtype RandKey = RandKey {randKey :: RealKey}
 
 data KeyMakerContext a where
-  ConsumerContext :: FixedKey -> RandKey -> KeyMakerContext (RealKey, RealKey)
-  ProducerContext :: RandKey -> KeyMakerContext RealKey
+  ProducerContext :: FixedKey -> RandKey -> KeyMakerContext (RealKey, RealKey)
+  ConsumerContext :: RandKey -> KeyMakerContext RealKey
 
-data SecureGate a n where
-  Not :: Key a -> SecureGate a 1
-  And :: Key a -> Key a -> SecureGate a 2
-  Or :: Key a -> Key a -> SecureGate a 2
-  Xor :: Key a -> Key a -> SecureGate a 2
+data GateType args where
+  Not :: GateType 1
+  And :: GateType 2
+  Or :: GateType 2
+  Xor :: GateType 2
+
+newtype SecureGate a n = SecureGate {gateType :: GateType n, args :: Vector a n}
 
 type SecureBit a = (StateT (Map KeyId (Key a)) IO (Key a))
 
@@ -47,4 +50,4 @@ class KeyMaker a where
 instance KeyMaker (RealKey, RealKey) where
   make context gate input = _
     where
-      ConsumerContext FixedKey{fKeyAES} RandKey{randKey} = context
+      ProducerContext FixedKey{fKeyAES} RandKey{randKey} = context
