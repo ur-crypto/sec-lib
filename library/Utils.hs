@@ -31,17 +31,17 @@ padLength = cipherSize - keyLength
 fromBinary :: (Binary a, Binary b) => a -> b
 fromBinary = decode . encode
 
-genFixedKey :: IO Key
-genFixedKey = getEntropy (fromIntegral cipherSize) >>= return . fromBinary
+genFixedRealKey :: IO RealKey
+genFixedRealKey = getEntropy (fromIntegral cipherSize) >>= return . fromBinary
 
-genRootKey :: IO Key
-genRootKey = do
+genRootRealKey :: IO RealKey
+genRootRealKey = do
   a <- getEntropy (fromIntegral cipherSize)
   let (Just (as, al)) = BS.unsnoc a
   return $ decode $ encode $ BS.snoc as (setBit al 0)
 
-mkKeyPairFromKey :: Key -> Key -> Bool -> (Key, Key)
-mkKeyPairFromKey rkey k0 sw =
+mkRealKeyPairFromRealKey :: RealKey -> RealKey -> Bool -> (RealKey, RealKey)
+mkRealKeyPairFromRealKey rkey k0 sw =
   let
     k1 = decode $ encode $ xor k0 rkey
     in
@@ -49,33 +49,33 @@ mkKeyPairFromKey rkey k0 sw =
       then (k1, k0)
       else (k0, k1)
 
-genKeyPair :: Key -> IO (Key, Key)
-genKeyPair rkey = do
+genRealKeyPair :: RealKey -> IO (RealKey, RealKey)
+genRealKeyPair rkey = do
     rnd <- getEntropy (fromIntegral cipherSize) >>= return . fromBinary
-    return $ mkKeyPairFromKey rkey rnd False
+    return $ mkRealKeyPairFromRealKey rkey rnd False
 
-getAESKeys :: Key -> Key -> (AES128, AES128)
-getAESKeys a b = (initFixedKey a, initFixedKey b)
+getAESRealKeys :: RealKey -> RealKey -> (AES128, AES128)
+getAESRealKeys a b = (initFixedRealKey a, initFixedRealKey b)
 
-initFixedKey :: Key -> AES128
-initFixedKey k = throwCryptoError $ cipherInit (fromBinary k :: BS.ByteString)
+initFixedRealKey :: RealKey -> AES128
+initFixedRealKey k = throwCryptoError $ cipherInit (fromBinary k :: BS.ByteString)
 
-hash :: AES128 -> Key -> Key
+hash :: AES128 -> RealKey -> RealKey
 hash k v = decode $ LBS.fromStrict $ ecbEncrypt k $ decode $ encode v
 
-hashPair :: AES128 -> Key -> Key -> Key
+hashPair :: AES128 -> RealKey -> RealKey -> RealKey
 hashPair fkey a b = xor (hash fkey a) (hash fkey b)
 
-enc :: AES128 -> (Key, Key, Key) -> Key
+enc :: AES128 -> (RealKey, RealKey, RealKey) -> RealKey
 enc fkey (a, b, o) = xor o $ hashPair fkey a b
 
-keyString :: Key -> String
+keyString :: RealKey -> String
 keyString = dumpBS . fromBinary
 
-printKey :: Maybe Bool -> Key -> IO()
-printKey (Just False) key = putStrLn $ "0:\t" ++ keyString key
-printKey (Just True) key = putStrLn $ "1:\t" ++ keyString key
-printKey Nothing key = putStrLn $ "?:\t" ++ keyString key
+printRealKey :: Maybe Bool -> RealKey -> IO()
+printRealKey (Just False) key = putStrLn $ "0:\t" ++ keyString key
+printRealKey (Just True) key = putStrLn $ "1:\t" ++ keyString key
+printRealKey Nothing key = putStrLn $ "?:\t" ++ keyString key
 
 bits2Bools :: FiniteBits a => a -> [Bool]
 bits2Bools i = reverse $ map (testBit i) [0..(finiteBitSize i - 1) :: Int]

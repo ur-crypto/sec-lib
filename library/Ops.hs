@@ -9,6 +9,7 @@ import           Prelude                     hiding (not, (&&), (/=), (==),
                                               (||))
 import qualified Prelude                     as P
 import           Types
+
 class Boolean a where
   not :: a -> a
   (&&) :: a -> a -> a
@@ -39,8 +40,11 @@ instance Boolean P.Bool where
 wrapBool :: forall a. Bool -> SecureBit a
 wrapBool = return . BKey
 
-extendToLength :: Int -> SecureNum a -> SecureNum a
-extendToLength n num = num ++ map (const $ wrapBool False) [0 .. n - length num]
+bitsToLength :: forall a m n. SecureNum a n -> SecureNum a m
+bitsToLength vec = generate vecMaker
+  where
+    vecMaker i = if i < length vec then index vec i else const $ wrapBool False
+
 
 -- instance Boolean (SecureNum a) where
 --   not list = extendToLength (length list) [foldl1 (||) list]

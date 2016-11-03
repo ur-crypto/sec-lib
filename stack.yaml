@@ -9,7 +9,7 @@ extra-deps:
 - ghc-typelits-presburger-0.1.1.0
 - monomorphic-0.0.3.3
 - singletons-2.1
-- sized-vector-1.4.3.1
 - th-desugar-1.6
 - type-natural-0.4.2.0
+- vector-sized-0.3.3.0
 resolver: lts-6.9

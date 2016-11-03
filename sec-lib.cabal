@@ -48,7 +48,7 @@ library
                   dlist,
                   classy-prelude,
                   containers,
-                  sized-vector,
+                  vector-sized,
                   type-natural,
                   singletons,
                   async,
