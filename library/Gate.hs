@@ -6,14 +6,19 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 module Gate where
 import           Control.Monad.State.Strict
+
 import           Data.Binary
 import           Data.Bits
+
 import           Data.ByteString            (ByteString)
 import qualified Data.ByteString            as BS
+
 import           Data.List
 import           Data.Map.Strict            (Map)
+
 import           Data.Vector.Sized          (Vector)
 import qualified Data.Vector.Sized          as V
+
 import           Types
 import           Utils
 
@@ -76,4 +81,35 @@ instance KeyMaker RealKey where
   make context gate input =
     case gate of
       SecureGate Not vec -> (CKey (V.index vec 0), BS.empty)
-      SecureGate Xor vec -> 
+      SecureGate Xor vec -> (CKey (xor (V.index vec 0) (V.index vec 1)), BS.empty)
+      SecureGate And vec ->
+        let [a, b] = V.toList vec in
+          doGate a b
+      SecureGate Or vec ->
+        let [a, b] = V.toList vec in
+          doGate a b
+    where
+      ConsumerContext FixedKey{fKeyAES} = context
+      doGate p q =
+        let (truthTable, _) = getInput input
+            decrypt = decTruthTable fKeyAES p q (map (decode . encode) truthTable) in
+        (CKey (decode $ encode decrypt), BS.empty)
+        where
+          decTruthTable fkey k1 k2 [o00, o01, o10, o11] =
+            let k1' = testBit k1 0
+                k2' = testBit k2 0 in
+            let o = case (k1', k2') of
+                  (False, False) -> o00
+                  (False, True) -> o01
+                  (True, False) -> o10
+                  (True, True) -> o11
+                  in
+            enc fkey (k1, k2, o)
+          getInput tt =
+            let (x1, r1) = BS.splitAt (fromIntegral cipherSize) tt
+                (x2, r2) = BS.splitAt (fromIntegral cipherSize) r1
+                (x3, r3) = BS.splitAt (fromIntegral cipherSize) r2
+                (x4, r4) = BS.splitAt (fromIntegral cipherSize) r3
+                in
+            let tt' = [x1, x2, x3, x4] in
+                (tt', r4)

@@ -20,7 +20,7 @@ newtype RandKey = RandKey {randKey :: RealKey}
 
 data KeyMakerContext a where
   ProducerContext :: FixedKey -> RandKey -> KeyMakerContext (RealKey, RealKey)
-  ConsumerContext :: RandKey -> KeyMakerContext RealKey
+  ConsumerContext :: FixedKey -> KeyMakerContext RealKey
 
 data GateType args where
   Not :: GateType 1
