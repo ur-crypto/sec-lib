@@ -35,6 +35,7 @@ type SecureNum a n = Vector n (SecureBit a)
 
 class KeyMaker a where
   make :: KeyMakerContext a -> SecureGate a n -> ByteString -> (Key a, ByteString)
+  performeGate :: a -> a -> a -- TODO
 
 instance KeyMaker (RealKey, RealKey) where
   make context gate _ =

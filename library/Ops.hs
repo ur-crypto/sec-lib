@@ -5,9 +5,8 @@
 {-# LANGUAGE TypeOperators        #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 module Ops where
-import           Prelude                     hiding (not, (&&), (/=), (==),
-                                              (||))
-import qualified Prelude                     as P
+import           Prelude hiding (not, (&&), (/=), (==), (||))
+import qualified Prelude as P
 import           Types
 
 class Boolean a where
