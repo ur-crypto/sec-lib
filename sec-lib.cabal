@@ -23,13 +23,8 @@ library
                     Consumer
                     Utils
                     Types
-                    Examples
-                    TestUtils
                     Ops
                     Gate
-                    BigGate
-                    NotGate
-                    Counter
     build-depends:
                   base ==4.8.*,
                   entropy,

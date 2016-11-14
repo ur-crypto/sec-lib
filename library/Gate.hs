@@ -36,6 +36,7 @@ type SecureNum a n = Vector n (SecureBit a)
 class KeyMaker a where
   make :: KeyMakerContext a -> SecureGate a n -> ByteString -> (Key a, ByteString)
   performeGate :: a -> a -> a -- TODO
+  performeGate = undefined
 
 instance KeyMaker (RealKey, RealKey) where
   make context gate _ =
@@ -106,6 +107,7 @@ instance KeyMaker RealKey where
                   (True, True) -> o11
                   in
             enc fkey (k1, k2, o)
+          decTruthTable _ _ _ _ = error "Wont happen"
           getInput tt =
             let (x1, r1) = BS.splitAt (fromIntegral cipherSize) tt
                 (x2, r2) = BS.splitAt (fromIntegral cipherSize) r1

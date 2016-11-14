@@ -36,13 +36,13 @@ instance Boolean P.Bool where
 --   a || b = evalGate $ Or a b
 --   a /= b = evalGate $ Xor a b
 
-wrapBool :: forall a. Bool -> SecureBit a
-wrapBool = return . BKey
+-- wrapBool :: forall a. Bool -> SecureBit a
+-- wrapBool = return . BKey
 
-bitsToLength :: forall a m n. SecureNum a n -> SecureNum a m
-bitsToLength vec = generate vecMaker
-  where
-    vecMaker i = if i < length vec then index vec i else const $ wrapBool False
+-- bitsToLength :: forall a m n. SecureNum a n -> SecureNum a m
+-- bitsToLength vec = generate vecMaker
+--   where
+--     vecMaker i = if i < length vec then index vec i else const $ wrapBool False
 
 
 -- instance Boolean (SecureNum a) where
